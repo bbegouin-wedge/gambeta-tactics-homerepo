@@ -1,0 +1,124 @@
+#!/usr/bin/env python3
+"""Monte l'espace de travail aux SHA d'un manifeste.
+
+    uv run scripts/workspace                         # manifests/current.yaml
+    uv run scripts/workspace manifests/candidates/<initiative>.yaml
+    uv run scripts/workspace --remote                # clone depuis `repo`, pas `local_path`
+    uv run scripts/workspace --status                # ce qui est monté, et à quel SHA
+
+Chaque composant est cloné dans workspace/<composant>/ (ou là où `mounted_in`
+le place), en HEAD détachée sur le SHA du manifeste. Le clone se fait depuis
+le dépôt local (`git clone --shared` : rapide, sans toucher au dépôt source)
+s'il contient le SHA, sinon depuis `repo`. Un composant sans SHA, externe, ou
+déclaré `mount: false` (données lues seulement hors intégration, trop lourdes
+à extraire à chaque fois) est sauté.
+
+Un clone déjà présent est seulement repositionné, et refusé s'il a des
+modifications : le workspace est jetable, mais pas en silence.
+"""
+
+from __future__ import annotations
+
+import argparse
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent / "lib"))
+
+from homerepo import (  # noqa: E402
+    CURRENT,
+    ROOT,
+    WORKSPACE,
+    Pin,
+    dump_yaml,
+    git,
+    has_commit,
+    main_guard,
+    resolve_manifest,
+)
+
+
+def source_of(pin: Pin, remote: bool) -> str:
+    local = pin.local_path
+    if not remote and local and (local / ".git").exists() and has_commit(local, pin.sha or ""):
+        return str(local)
+    if pin.spec.get("repo"):
+        return pin.spec["repo"]
+    raise RuntimeError(
+        f"{pin.name} : SHA {pin.sha} introuvable dans {local}, et aucun `repo` pour cloner"
+    )
+
+
+def mount(pin: Pin, remote: bool) -> str:
+    dest = pin.workspace_dir()
+    assert pin.sha
+    if (dest / ".git").exists():
+        if git("status", "--porcelain", cwd=dest):
+            raise RuntimeError(f"{dest.relative_to(ROOT)} a des modifications : à traiter avant")
+        if not has_commit(dest, pin.sha):
+            git("fetch", "--quiet", "origin", cwd=dest)
+    else:
+        src = source_of(pin, remote)
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        args = ["clone", "--quiet", "--no-checkout"]
+        if not src.startswith(("git@", "https://", "ssh://")):
+            args.append("--shared")
+        git(*args, src, str(dest))
+    git("-c", "advice.detachedHead=false", "checkout", "--quiet", "--detach", pin.sha, cwd=dest)
+    return pin.sha
+
+
+def status(manifest: Path) -> int:
+    for name, pin in resolve_manifest(manifest).items():
+        if pin.spec.get("kind") == "external" or pin.spec.get("mount") is False:
+            print(f"– {name:20} manifeste {str(pin.sha)[:10]:10}  non monté")
+            continue
+        d = pin.workspace_dir()
+        here = git("rev-parse", "HEAD", cwd=d, check=False) if (d / ".git").exists() else None
+        mark = "✓" if here and here == pin.sha else ("–" if not pin.sha else "✗")
+        print(f"{mark} {name:20} manifeste {str(pin.sha)[:10]:10}  monté {str(here)[:10]}")
+    return 0
+
+
+def run() -> int:
+    p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    p.add_argument("manifest", nargs="?", type=Path, default=CURRENT)
+    p.add_argument("--remote", action="store_true", help="cloner depuis `repo`")
+    p.add_argument("--status", action="store_true", help="afficher l'état du workspace")
+    a = p.parse_args()
+    manifest = a.manifest if a.manifest.is_absolute() else (Path.cwd() / a.manifest)
+
+    if a.status:
+        return status(manifest)
+
+    pins = resolve_manifest(manifest)
+    # Les hôtes avant ce qu'on monte dedans.
+    ordered = sorted(pins.values(), key=lambda p: p.mounted_in is not None)
+    mounted: dict[str, str | None] = {}
+    for pin in ordered:
+        if pin.spec.get("kind") == "external":
+            continue
+        if pin.spec.get("mount") is False:
+            print(f"– {pin.name} : mount: false, non monté (fixé à {str(pin.sha)[:10]})")
+            mounted[pin.name] = None
+            continue
+        if not pin.sha:
+            print(f"– {pin.name} : pas de SHA dans le manifeste, sauté")
+            mounted[pin.name] = None
+            continue
+        mounted[pin.name] = mount(pin, a.remote)
+        print(f"✓ {pin.name} @ {pin.sha[:10]} → {pin.workspace_dir().relative_to(ROOT)}")
+
+    WORKSPACE.mkdir(exist_ok=True)
+    (WORKSPACE / "mounted.yaml").write_text(
+        dump_yaml(
+            {"manifest": str(manifest.relative_to(ROOT)), "components": mounted},
+            "# Écrit par scripts/workspace.\n",
+        ),
+        encoding="utf-8",
+    )
+    return 0
+
+
+if __name__ == "__main__":
+    main_guard(run)

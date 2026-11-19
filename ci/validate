@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Validation du home repo seul : rapide, sans accès aux composants.
+# Lancée sur chaque PR du home repo (.github/workflows/validate.yml).
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+uv run --quiet scripts/checks/structure

@@ -1,0 +1,7 @@
+[project]
+name = "gambeta-tactics-homerepo"
+version = "0.1.0"
+description = "Home repo du système Gambeta Tactics : composants, relations, contrats, manifestes, initiatives."
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = ["pyyaml>=6"]

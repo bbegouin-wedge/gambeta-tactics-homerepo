@@ -1,0 +1,108 @@
+#!/usr/bin/env python3
+"""Intégration d'un manifeste : les composants, à ces SHA, marchent-ils ensemble ?
+
+    uv run ci/integrate                                         # la baseline
+    uv run ci/integrate manifests/candidates/<initiative>.yaml  # un candidat
+    uv run ci/integrate manifests/candidates/<initiative>.yaml --promote
+    uv run ci/integrate … --remote --skip-gates
+
+Étapes, dans l'ordre, arrêt à la première qui échoue :
+  1. structure    scripts/checks/structure
+  2. workspace    scripts/workspace <manifeste>
+  3. portes       pour chaque composant monté : gates.install puis gates.test
+  4. contrats     scripts/checks/drift --contracts
+  5. promotion    (--promote, candidat seulement) current.yaml prend les SHA du
+                  candidat ; le candidat est supprimé. Commit à faire ensuite.
+"""
+
+from __future__ import annotations
+
+import argparse
+import datetime
+import shlex
+import subprocess
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts" / "lib"))
+
+from homerepo import (  # noqa: E402
+    CURRENT,
+    ROOT,
+    WORKSPACE,
+    dump_yaml,
+    git,
+    load_yaml,
+    main_guard,
+    resolve_manifest,
+)
+
+
+def step(title: str, cmd: list[str], cwd: Path = ROOT) -> None:
+    print(f"\n━━ {title}\n   $ {shlex.join(cmd)}  (dans {cwd.relative_to(ROOT) if cwd != ROOT else '.'})", flush=True)
+    if subprocess.run(cmd, cwd=cwd).returncode != 0:
+        raise RuntimeError(f"échec : {title}")
+
+
+def promote(manifest: Path) -> None:
+    data = load_yaml(manifest)
+    if data.get("manifest") != "candidate":
+        raise RuntimeError("--promote ne s'applique qu'à un candidat")
+    pins = resolve_manifest(manifest)
+    home = git("rev-parse", "HEAD", cwd=ROOT, check=False) or "worktree"
+    if git("status", "--porcelain", "contracts", cwd=ROOT):
+        home = "worktree"
+    header = CURRENT.read_text(encoding="utf-8").split("\nmanifest:", 1)[0] + "\n"
+    CURRENT.write_text(
+        dump_yaml(
+            {
+                "manifest": "current",
+                "integrated_at": datetime.date.today().isoformat(),
+                "contracts": home,
+                "from_initiative": data["initiative"],
+                "components": {n: {"sha": p.sha} for n, p in pins.items()},
+            },
+            header,
+        ),
+        encoding="utf-8",
+    )
+    manifest.unlink()
+    print(f"\n✓ promu : {CURRENT.relative_to(ROOT)} mis à jour, {manifest.name} supprimé")
+
+
+def run() -> int:
+    p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    p.add_argument("manifest", nargs="?", type=Path, default=CURRENT)
+    p.add_argument("--remote", action="store_true", help="cloner depuis les remotes (CI)")
+    p.add_argument("--skip-gates", action="store_true", help="sauter les portes des composants")
+    p.add_argument("--promote", action="store_true")
+    a = p.parse_args()
+    manifest = a.manifest.resolve()
+    py = sys.executable
+
+    step("structure", [py, "scripts/checks/structure"])
+    ws_cmd = [py, "scripts/workspace", str(manifest)] + (["--remote"] if a.remote else [])
+    step("workspace", ws_cmd)
+
+    pins = resolve_manifest(manifest)
+    mounted = [n for n, pin in pins.items() if pin.sha and (pin.workspace_dir() / ".git").exists()]
+
+    if not a.skip_gates:
+        for name in mounted:
+            gates = pins[name].spec.get("gates") or {}
+            if not gates:
+                print(f"\n━━ {name} · aucune porte déclarée")
+            for gate in ("install", "test"):
+                if gates.get(gate):
+                    step(f"{name} · {gate}", shlex.split(gates[gate]), WORKSPACE / name)
+
+    step("contrats", [py, "scripts/checks/drift", "--contracts"])
+
+    if a.promote:
+        promote(manifest)
+    print("\n✓ intégration réussie")
+    return 0
+
+
+if __name__ == "__main__":
+    main_guard(run)

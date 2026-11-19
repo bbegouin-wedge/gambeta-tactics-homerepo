@@ -1,0 +1,73 @@
+# Les composants du système Gambeta Tactics : qui ils sont, où ils vivent, de
+# quoi ils répondent. Une entrée par dépôt. Les clés sont les identifiants
+# utilisés partout ailleurs (relations, manifestes, contrats, workspace).
+#
+#   code          code court, dans les identifiants d'epics et de tickets
+#                 composant (I1-E1-BE, I1-E1-CL-T3)
+#   repo          URL git, celle que la CI clone
+#   local_path    clone de travail, relatif à la racine du home repo
+#   branch        branche d'intégration du composant
+#   kind          service | client | test-double | data | external
+#   gates         cibles du composant, appelées par ci/integrate (aucune encore)
+#   extractor     script de scripts/extractors/ qui régénère les contrats
+#                 fournis, depuis le code du composant (aucun encore)
+#   owns_specs    où le composant reçoit ses epics composant
+#   mount         false : fixé par le manifeste mais pas monté dans workspace/
+#
+# Les responsabilités sont figées : elles ne changent que par un ADR
+# (decisions/0002, processus d'architecture).
+
+components:
+
+  backend:
+    code: BE
+    repo: git@github.com:bbegouin-wedge/gambeta-tactics.git
+    local_path: ../gambeta_tactics_backend
+    branch: main
+    kind: service
+    stack: python 3.13
+    summary: >
+      Le serveur de jeu : le moteur qui enchaîne la boucle d'un match (match,
+      manche, tour, ordre, file d'effets) et fait autorité sur l'information
+      cachée. Vide à l'amorçage : seulement les docs de game design.
+    responsibilities:
+      - seul détenteur de l'état d'un match et de son flux d'événements
+      - appliquer les règles du jeu, étape par étape
+      - mélanger les decks et tirer l'initiative (graine enregistrée pour le replay)
+      - filtrer l'information cachée par joueur au moment de la diffusion
+      - attendre les saisies des joueurs aux points d'attente, et tenir leur pendule
+      - pousser les événements et les saisies attendues sur le canal de chaque joueur
+    owns_specs: specs/
+    gates: {}
+
+  client:
+    code: CL
+    repo: git@github.com:bbegouin-wedge/gambeta-tactics-client.git
+    local_path: ../gambeta_tactics_client
+    branch: main
+    kind: client
+    stack: godot 4.7 · gdscript
+    summary: >
+      Le client de jeu d'un joueur : affiche le match et remonte ses
+      décisions au serveur. Maquette de l'écran de match à l'amorçage, sans
+      logique de jeu.
+    responsibilities:
+      - afficher le match à un joueur (arène, plateau, unités, cartes, événements)
+      - présenter les saisies qui lui sont demandées et remonter ses décisions
+      - prévisualiser l'effet d'un ordre sur le plateau avant validation
+      - générer ses assets graphiques depuis OpenDuelyst (scripts/duelyst_import/)
+    owns_specs: specs/
+    gates: {}
+
+  open-duelyst:
+    repo: git@github.com:open-duelyst/duelyst.git
+    local_path: ../../duelyst
+    branch: main
+    kind: data
+    mount: false          # ~1 Go, lu seulement pour régénérer les assets du client
+    summary: >
+      Le dépôt OpenDuelyst (CC0) : planches de sprites, arènes, icônes et
+      effets réutilisés par le client pour le prototype. Le nom et le logo
+      « Duelyst » ne sont pas couverts (product/Plan de réutilisation…).
+    responsibilities:
+      - fournir les assets graphiques sources (app/resources/)

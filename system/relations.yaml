@@ -1,0 +1,46 @@
+# Les dépendances déclarées entre composants, et le contrat qui porte chacune.
+# Une dépendance qui n'est pas ici n'existe pas : la créer, c'est l'ajouter ici
+# (et son contrat dans contracts/), dans l'initiative qui l'introduit.
+#
+#   from / to     identifiants de system/components.yaml
+#   role          consumes   from appelle ou écoute to
+#                 implements from sert le même contrat que to (une doublure)
+#                 reads      from lit des données publiées par to
+#   contract      chemin sous contracts/, ou null si le contrat n'est pas
+#                 encore formalisé (status: informal | planned)
+#   status        formal | informal | planned
+
+relations:
+
+  - id: client-plays-on-backend
+    from: client
+    to: backend
+    role: consumes
+    contract: null
+    status: planned
+    notes: >
+      Le canal d'un joueur : événements filtrés par joueur, saisies attendues,
+      décisions remontées. Le protocole et la nature de son contrat (généré
+      depuis le code ou écrit) sont fixés par l'initiative I1.
+
+  - id: client-shows-card-texts
+    from: client
+    to: backend
+    role: reads
+    contract: null
+    status: informal
+    notes: >
+      client/data/cards.json recopie à la main les textes des cartes et les
+      fiches d'unités des docs de game design (product/), pour l'affichage.
+      À remplacer par ce que le serveur publie quand il existera.
+
+  - id: client-imports-duelyst-assets
+    from: client
+    to: open-duelyst
+    role: reads
+    contract: null
+    status: informal
+    notes: >
+      scripts/duelyst_import/ du client lit app/resources/ du dépôt OpenDuelyst
+      (--duelyst, DUELYST_ROOT, sinon ../../duelyst) et génère assets/arenas/ et
+      assets/sprites/, commités dans le client. Le manifeste fixe le SHA lu.

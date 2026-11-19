@@ -1,0 +1,20 @@
+# La baseline : l'ensemble de versions qui fonctionnent ensemble, aujourd'hui.
+# Il n'y a pas encore de production : c'est la dernière combinaison intégrée.
+# Elle ne change que par la promotion d'un manifeste candidat (ci/integrate
+# --promote), jamais à la main.
+#
+#   sha       commit exact du composant ; null si le dépôt n'a aucun commit
+#   contracts version des contrats de ce home repo avec laquelle ces SHA ont
+#             été intégrés (commit du home repo, ou "worktree" à l'amorçage)
+
+manifest: current
+integrated_at: 2026-11-19
+contracts: worktree
+
+components:
+  backend:
+    sha: 35199e11102699f13c660762f6ee6d0a3ccf5df3
+  client:
+    sha: 84bb03077d43ec6d8dba552e2cd01b4997c1efcc
+  open-duelyst:
+    sha: 2ce9684181a108f93afcdfdd60bf220c42465039

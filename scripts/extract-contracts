@@ -1,0 +1,68 @@
+#!/usr/bin/env python3
+"""Régénère les contrats issus du code, depuis le workspace monté.
+
+    uv run scripts/extract-contracts            # écrit dans contracts/
+    uv run scripts/extract-contracts --out DIR  # écrit ailleurs (utilisé par checks/drift)
+
+Pour chaque composant qui déclare un `extractor` (system/components.yaml), on
+lance scripts/extractors/<extractor> dans l'environnement du composant, tel
+que monté dans workspace/ (donc au SHA du manifeste monté). Monter d'abord :
+scripts/workspace.
+
+Les fichiers produits portent un en-tête « généré » : ne pas les éditer à la
+main, changer le code du composant (decisions/0002).
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent / "lib"))
+
+from homerepo import CONTRACTS, ROOT, WORKSPACE, components, dump_yaml, main_guard  # noqa: E402
+
+HEADER = (
+    "# GÉNÉRÉ par scripts/extract-contracts depuis {component} — ne pas éditer.\n"
+    "# Pour le changer : modifier le code de {component}, puis régénérer.\n"
+)
+
+
+def extract(name: str, extractor: str) -> dict[str, object]:
+    ws = WORKSPACE / name
+    if not (ws / ".git").exists():
+        raise RuntimeError(f"{name} n'est pas monté : lancer scripts/workspace d'abord")
+    script = ROOT / "scripts" / "extractors" / extractor
+    r = subprocess.run(
+        ["uv", "run", "--quiet", "--frozen", "python", str(script)],
+        cwd=ws,
+        env={**os.environ, "PYTHONPATH": str(ws)},
+        capture_output=True,
+        text=True,
+    )
+    if r.returncode != 0:
+        raise RuntimeError(f"extracteur {extractor} : {r.stderr.strip()[-2000:]}")
+    return json.loads(r.stdout)
+
+
+def run() -> int:
+    p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    p.add_argument("--out", type=Path, default=CONTRACTS)
+    a = p.parse_args()
+    for name, spec in components().items():
+        if not spec.get("extractor"):
+            continue
+        for rel, doc in extract(name, spec["extractor"]).items():
+            dest = a.out / rel
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            dest.write_text(dump_yaml(doc, HEADER.format(component=name)), encoding="utf-8")
+            print(f"✓ {name} → {dest.relative_to(a.out.parent) if a.out == CONTRACTS else dest}")
+    return 0
+
+
+if __name__ == "__main__":
+    main_guard(run)

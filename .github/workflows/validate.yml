@@ -1,0 +1,17 @@
+name: validate
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  structure:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: ci/validate
+
+  # L'intégration (ci/integrate --remote) demande l'accès aux dépôts des
+  # composants (clé de déploiement ou token), et des portes déclarées dans
+  # system/components.yaml : aucun composant n'en a encore. À activer alors.

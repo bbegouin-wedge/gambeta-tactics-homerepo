@@ -1,0 +1,162 @@
+#!/usr/bin/env python3
+"""Validations croisées du home repo, sans accès aux composants.
+
+    uv run scripts/checks/structure
+
+- chaque relation relie des composants déclarés, et son contrat existe ;
+- chaque contrat de contracts/ est porté par au moins une relation ;
+- chaque manifeste ne cite que des composants déclarés, avec des SHA bien formés ;
+- chaque composant non externe est fixé par current.yaml ;
+- chaque candidat nomme une initiative qui existe dans une colonne d'initiatives/ ;
+- chaque composant non externe a un code court, unique ;
+- chaque `$ref` relatif d'un contrat pointe vers un fichier existant ;
+- chaque extracteur déclaré existe.
+"""
+
+from __future__ import annotations
+
+import re
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
+
+from homerepo import (  # noqa: E402
+    CONTRACTS,
+    CURRENT,
+    MANIFESTS,
+    ROOT,
+    Report,
+    components,
+    load_yaml,
+    main_guard,
+    relations,
+)
+
+SHA = re.compile(r"^[0-9a-f]{40}$")
+KINDS = {"service", "client", "test-double", "data", "external"}
+ROLES = {"consumes", "implements", "reads"}
+STATUSES = {"formal", "informal", "planned"}
+
+
+def contract_file(ref: str) -> Path:
+    return CONTRACTS / ref.split("#", 1)[0]
+
+
+def check_components(r: Report, comps: dict) -> None:
+    codes: dict[str, str] = {}
+    for name, c in comps.items():
+        code = c.get("code")
+        if c.get("kind") in {"service", "client", "test-double"}:
+            if not code:
+                r.error(f"composant {name} : pas de `code` court")
+            elif code in codes:
+                r.error(f"composant {name} : code {code} déjà pris par {codes[code]}")
+            else:
+                codes[code] = name
+        if c.get("kind") not in KINDS:
+            r.error(f"composant {name} : kind {c.get('kind')!r} inconnu")
+        if c.get("extractor") and not (ROOT / "scripts/extractors" / c["extractor"]).exists():
+            r.error(f"composant {name} : extracteur {c['extractor']} introuvable")
+        m = c.get("mounted_in")
+        if m and m.get("component") not in comps:
+            r.error(f"composant {name} : monté dans {m.get('component')!r}, inconnu")
+        if c.get("kind") != "external" and not c.get("repo"):
+            r.warn(f"composant {name} : pas de `repo`, la CI ne pourra pas le cloner")
+
+
+def check_relations(r: Report, comps: dict) -> set[Path]:
+    used: set[Path] = set()
+    ids: set[str] = set()
+    for rel in relations():
+        rid = rel.get("id", "?")
+        if rid in ids:
+            r.error(f"relation {rid} : id en double")
+        ids.add(rid)
+        for end in ("from", "to"):
+            if rel.get(end) not in comps:
+                r.error(f"relation {rid} : {end} {rel.get(end)!r} n'est pas un composant")
+        if rel.get("role") not in ROLES:
+            r.error(f"relation {rid} : role {rel.get('role')!r} inconnu")
+        if rel.get("status") not in STATUSES:
+            r.error(f"relation {rid} : status {rel.get('status')!r} inconnu")
+        refs = [rel["contract"]] if rel.get("contract") else []
+        refs += rel.get("also") or []
+        if not refs and rel.get("status") == "formal":
+            r.error(f"relation {rid} : formelle sans contrat")
+        if not refs and rel.get("status") == "informal":
+            r.warn(f"relation {rid} : contrat non formalisé")
+        for ref in refs:
+            f = contract_file(ref)
+            if not f.exists():
+                r.error(f"relation {rid} : contrat {ref} introuvable")
+            used.add(f)
+    return used
+
+
+def check_contracts(r: Report, used: set[Path]) -> None:
+    for f in sorted(CONTRACTS.rglob("*.yaml")):
+        rel = f.relative_to(CONTRACTS)
+        try:
+            doc = load_yaml(f)
+        except Exception as e:  # noqa: BLE001
+            r.error(f"contrat {rel} : YAML invalide ({e})")
+            continue
+        # Un schéma référencé par un autre contrat est couvert par lui.
+        if f not in used and not any(
+            f.name in g.read_text(encoding="utf-8") for g in used if g.exists()
+        ):
+            r.warn(f"contrat {rel} : porté par aucune relation")
+        for ref in re.findall(r"\$ref: ['\"]?(\.{1,2}/[^#'\"\s}]+)", f.read_text(encoding="utf-8")):
+            if not (f.parent / ref).resolve().exists():
+                r.error(f"contrat {rel} : $ref {ref} introuvable")
+        del doc
+
+
+def check_manifests(r: Report, comps: dict) -> None:
+    initiatives = ROOT / "initiatives"
+    files = [CURRENT, *sorted((MANIFESTS / "candidates").glob("*.yaml"))]
+    for f in files:
+        rel = f.relative_to(ROOT)
+        data = load_yaml(f) or {}
+        pins = data.get("components") or {}
+        for name, entry in pins.items():
+            if name not in comps:
+                r.error(f"{rel} : composant {name} inconnu")
+                continue
+            sha = (entry or {}).get("sha")
+            if sha is None:
+                r.warn(f"{rel} : {name} sans SHA")
+            elif not SHA.match(str(sha)):
+                r.error(f"{rel} : {name} SHA {sha!r} mal formé (40 hexa attendus)")
+        if f == CURRENT:
+            for name, c in comps.items():
+                if c.get("kind") != "external" and name not in pins:
+                    r.error(f"{rel} : composant {name} non fixé")
+        else:
+            if data.get("manifest") != "candidate":
+                r.error(f"{rel} : `manifest: candidate` attendu")
+            ini = data.get("initiative")
+            # Le dossier d'une initiative est dans sa colonne, préfixé de sa
+            # priorité au backlog : initiatives/<colonne>/[<nn>-]<id>/.
+            found = ini and any(
+                d.is_dir() for pat in (f"*/{ini}", f"*/*-{ini}") for d in initiatives.glob(pat)
+            )
+            if not found:
+                r.error(f"{rel} : initiative {ini!r} absente de initiatives/")
+            if f.stem != ini:
+                r.error(f"{rel} : le fichier doit s'appeler {ini}.yaml")
+
+
+def run() -> int:
+    r = Report("structure")
+    comps = components()
+    check_components(r, comps)
+    used = check_relations(r, comps)
+    check_contracts(r, used)
+    check_manifests(r, comps)
+    return r.finish()
+
+
+if __name__ == "__main__":
+    main_guard(run)

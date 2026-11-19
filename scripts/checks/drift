@@ -1,0 +1,109 @@
+#!/usr/bin/env python3
+"""Dérive entre ce que déclare le home repo et ce que font les composants.
+
+    uv run scripts/checks/drift              # contrats + SHA
+    uv run scripts/checks/drift --contracts  # seulement les contrats (CI)
+    uv run scripts/checks/drift --shas       # seulement les SHA (informatif)
+
+Contrats (échoue) : régénère les contrats depuis le workspace monté (donc aux
+SHA du manifeste monté) et les compare à contracts/. Un écart veut dire que
+le code d'un composant ne fournit plus ce que le home repo déclare.
+
+SHA (avertit) : compare la baseline à la tête de la branche d'intégration de
+chaque dépôt local. Des commits non intégrés ne sont pas une faute, mais
+chaque jour d'écart rend la prochaine intégration plus chère.
+"""
+
+from __future__ import annotations
+
+import argparse
+import difflib
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
+
+from homerepo import (  # noqa: E402
+    CONTRACTS,
+    CURRENT,
+    ROOT,
+    WORKSPACE,
+    Report,
+    components,
+    git,
+    load_yaml,
+    main_guard,
+    resolve_manifest,
+)
+
+
+def contracts_drift(r: Report) -> None:
+    mounted = WORKSPACE / "mounted.yaml"
+    if not mounted.exists():
+        r.error("workspace non monté : lancer scripts/workspace")
+        return
+    r.warn(f"comparé au workspace monté depuis {load_yaml(mounted)['manifest']}")
+    with tempfile.TemporaryDirectory() as tmp:
+        out = Path(tmp)
+        res = subprocess.run(
+            [sys.executable, str(ROOT / "scripts/extract-contracts"), "--out", str(out)],
+            capture_output=True,
+            text=True,
+        )
+        if res.returncode != 0:
+            r.error(f"extraction impossible : {res.stderr.strip()}")
+            return
+        for gen in sorted(out.rglob("*.yaml")):
+            rel = gen.relative_to(out)
+            decl = CONTRACTS / rel
+            if not decl.exists():
+                r.error(f"{rel} : fourni par le code, absent de contracts/")
+                continue
+            a = decl.read_text(encoding="utf-8").splitlines()
+            b = gen.read_text(encoding="utf-8").splitlines()
+            if a != b:
+                diff = list(difflib.unified_diff(a, b, "déclaré", "code", n=1, lineterm=""))
+                excerpt = "\n      ".join(diff[:30])
+                more = f"\n      … ({len(diff) - 30} lignes de plus)" if len(diff) > 30 else ""
+                r.error(f"{rel} : le code a dérivé du contrat\n      {excerpt}{more}")
+
+
+def sha_drift(r: Report) -> None:
+    pins = resolve_manifest(CURRENT)
+    for name, spec in components().items():
+        pin = pins.get(name)
+        local = pin.local_path if pin else None
+        if not pin or not local or not (local / ".git").exists():
+            continue
+        branch = spec.get("branch", "main")
+        head = git("rev-parse", "--verify", "--quiet", branch, cwd=local, check=False)
+        if not head:
+            r.warn(f"{name} : branche {branch} introuvable dans {local}")
+            continue
+        if not pin.sha:
+            r.warn(f"{name} : non fixé par la baseline, {branch} est à {head[:10]}")
+            continue
+        if head == pin.sha:
+            continue
+        ahead = git("rev-list", "--count", f"{pin.sha}..{head}", cwd=local, check=False)
+        r.warn(f"{name} : {branch} a {ahead or '?'} commit(s) non intégré(s) (baseline {pin.sha[:10]}, tête {head[:10]})")
+
+
+def run() -> int:
+    p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    p.add_argument("--contracts", action="store_true")
+    p.add_argument("--shas", action="store_true")
+    a = p.parse_args()
+    both = not (a.contracts or a.shas)
+    r = Report("dérive")
+    if a.contracts or both:
+        contracts_drift(r)
+    if a.shas or both:
+        sha_drift(r)
+    return r.finish()
+
+
+if __name__ == "__main__":
+    main_guard(run)
