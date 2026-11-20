@@ -37,6 +37,7 @@ components:
       - filtrer l'information cachée par joueur au moment de la diffusion
       - attendre les saisies des joueurs aux points d'attente, et tenir leur pendule
       - pousser les événements et les saisies attendues sur le canal de chaque joueur
+      - de lanière générale, c'est ce composant qui gère les règles du jeu et lui seul
     owns_specs: specs/
     gates: {}
 
@@ -56,6 +57,7 @@ components:
       - présenter les saisies qui lui sont demandées et remonter ses décisions
       - prévisualiser l'effet d'un ordre sur le plateau avant validation
       - générer ses assets graphiques depuis OpenDuelyst (scripts/duelyst_import/)
+      - de manière générale c'est le composant d'affichage de ce qui se présente au joueur
     owns_specs: specs/
     gates: {}
 
