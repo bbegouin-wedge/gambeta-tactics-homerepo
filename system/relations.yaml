@@ -42,5 +42,5 @@ relations:
     status: informal
     notes: >
       scripts/duelyst_import/ du client lit app/resources/ du dépôt OpenDuelyst
-      (--duelyst, DUELYST_ROOT, sinon ../../duelyst) et génère assets/arenas/ et
+      (--duelyst, DUELYST_ROOT, sinon ../duelyst voisin du client, puis ../../duelyst) et génère assets/arenas/ et
       assets/sprites/, commités dans le client. Le manifeste fixe le SHA lu.

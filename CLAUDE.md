@@ -20,7 +20,7 @@ Les composants, leurs dépôts voisins :
 |---|---|---|---|---|
 | `backend` | `BE` | `../gambeta_tactics_backend` | serveur de jeu, seul détenteur de l'état d'un match | `specs/` |
 | `client` | `CL` | `../gambeta_tactics_client` | client Godot d'un joueur | `specs/` |
-| `open-duelyst` | — | `../../duelyst` | assets CC0 lus par le client (données, non monté) | — |
+| `open-duelyst` | — | `../duelyst` | assets CC0 lus par le client (données, non monté) | — |
 
 Chaque composant garde son `CLAUDE.md`, ses règles et son kanban : ils
 s'appliquent quand on travaille dans ce composant. Ce fichier ne régit que

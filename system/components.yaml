@@ -61,7 +61,7 @@ components:
 
   open-duelyst:
     repo: git@github.com:open-duelyst/duelyst.git
-    local_path: ../../duelyst
+    local_path: ../duelyst
     branch: main
     kind: data
     mount: false          # ~1 Go, lu seulement pour régénérer les assets du client

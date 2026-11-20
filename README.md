@@ -23,7 +23,7 @@ ci/                          validation (PR) et intégration d'un manifeste
 
 Prérequis : `uv`, `git`, et les dépôts clonés à côté de celui-ci
 (`../gambeta_tactics_backend`, `../gambeta_tactics_client`), plus OpenDuelyst
-en `../../duelyst` pour régénérer les assets du client.
+en `../duelyst` pour régénérer les assets du client.
 
 ```bash
 make workspace     # clone chaque composant dans workspace/, au SHA de la baseline
