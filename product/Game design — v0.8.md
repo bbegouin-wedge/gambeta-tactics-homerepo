@@ -1,4 +1,4 @@
-# Game design — v0.8
+ Game design — v0.8
 
 Nov 15, 2026 · @Bertrand
 
