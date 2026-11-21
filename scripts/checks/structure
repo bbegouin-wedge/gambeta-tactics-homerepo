@@ -7,7 +7,8 @@
 - chaque contrat de contracts/ est porté par au moins une relation ;
 - chaque manifeste ne cite que des composants déclarés, avec des SHA bien formés ;
 - chaque composant non externe est fixé par current.yaml ;
-- chaque candidat nomme une initiative qui existe dans une colonne d'initiatives/ ;
+- chaque candidat nomme son origine : une initiative qui existe dans une colonne
+  d'initiatives/, ou une décision de decisions/ (candidat d'adoption, `decision: "NNNN"`) ;
 - chaque composant non externe a un code court, unique ;
 - chaque `$ref` relatif d'un contrat pointe vers un fichier existant ;
 - chaque extracteur déclaré existe.
@@ -136,16 +137,26 @@ def check_manifests(r: Report, comps: dict) -> None:
         else:
             if data.get("manifest") != "candidate":
                 r.error(f"{rel} : `manifest: candidate` attendu")
-            ini = data.get("initiative")
-            # Le dossier d'une initiative est dans sa colonne, préfixé de sa
-            # priorité au backlog : initiatives/<colonne>/[<nn>-]<id>/.
-            found = ini and any(
-                d.is_dir() for pat in (f"*/{ini}", f"*/*-{ini}") for d in initiatives.glob(pat)
-            )
-            if not found:
-                r.error(f"{rel} : initiative {ini!r} absente de initiatives/")
-            if f.stem != ini:
-                r.error(f"{rel} : le fichier doit s'appeler {ini}.yaml")
+            ini, dec = data.get("initiative"), data.get("decision")
+            if ini and dec:
+                r.error(f"{rel} : une seule origine, `initiative` ou `decision`")
+            elif dec:
+                # Candidat d'adoption : il applique une décision d'architecture
+                # (changement de dépôt d'un composant…), hors du flux d'une initiative.
+                if not list((ROOT / "decisions").glob(f"{dec}-*.md")):
+                    r.error(f"{rel} : décision {dec!r} absente de decisions/")
+                if f.stem != f"adr-{dec}":
+                    r.error(f"{rel} : le fichier doit s'appeler adr-{dec}.yaml")
+            else:
+                # Le dossier d'une initiative est dans sa colonne, préfixé de sa
+                # priorité au backlog : initiatives/<colonne>/[<nn>-]<id>/.
+                found = ini and any(
+                    d.is_dir() for pat in (f"*/{ini}", f"*/*-{ini}") for d in initiatives.glob(pat)
+                )
+                if not found:
+                    r.error(f"{rel} : initiative {ini!r} absente de initiatives/")
+                if f.stem != ini:
+                    r.error(f"{rel} : le fichier doit s'appeler {ini}.yaml")
 
 
 def run() -> int:

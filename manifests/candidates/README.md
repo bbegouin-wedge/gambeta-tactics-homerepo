@@ -22,3 +22,20 @@ uv run ci/integrate manifests/candidates/<id>.yaml --promote  # sur validation
 ```
 
 La promotion réécrit `current.yaml` et supprime le candidat.
+
+## Candidat d'adoption
+
+Une décision d'architecture peut changer la baseline hors du flux d'une initiative, par
+exemple quand un composant change de dépôt (ADR 0003). Son candidat nomme la décision au
+lieu d'une initiative, et s'appelle `adr-<NNNN>.yaml` :
+
+```yaml
+manifest: candidate
+decision: "0003"
+components:
+  backend:
+    sha: <40 hexa>
+```
+
+Il s'intègre comme les autres ; `--promote` exige que la décision soit acceptée, et
+`current.yaml` garde `from_decision` au lieu de `from_initiative`.

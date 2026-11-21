@@ -22,7 +22,7 @@ ci/                          validation (PR) et intégration d'un manifeste
 ## Démarrer
 
 Prérequis : `uv`, `git`, et les dépôts clonés à côté de celui-ci
-(`../gambeta_tactics_backend`, `../gambeta_tactics_client`), plus OpenDuelyst
+(`../gambeta_server`, `../gambeta_tactics_client`), plus OpenDuelyst
 en `../../duelyst` pour régénérer les assets du client.
 
 ```bash

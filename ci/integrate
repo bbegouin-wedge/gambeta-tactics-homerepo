@@ -13,6 +13,8 @@
   4. contrats     scripts/checks/drift --contracts
   5. promotion    (--promote, candidat seulement) current.yaml prend les SHA du
                   candidat ; le candidat est supprimé. Commit à faire ensuite.
+                  Un candidat d'adoption (`decision: "NNNN"`) n'est promu que si
+                  sa décision est acceptée.
 """
 
 from __future__ import annotations
@@ -48,6 +50,13 @@ def promote(manifest: Path) -> None:
     data = load_yaml(manifest)
     if data.get("manifest") != "candidate":
         raise RuntimeError("--promote ne s'applique qu'à un candidat")
+    origin = {"from_initiative": data["initiative"]} if data.get("initiative") else {}
+    if data.get("decision"):
+        dec = data["decision"]
+        adr = next((ROOT / "decisions").glob(f"{dec}-*.md"), None)
+        if adr is None or "- Statut : acceptée" not in adr.read_text(encoding="utf-8"):
+            raise RuntimeError(f"--promote : la décision {dec} doit exister et être acceptée")
+        origin = {"from_decision": dec}
     pins = resolve_manifest(manifest)
     home = git("rev-parse", "HEAD", cwd=ROOT, check=False) or "worktree"
     if git("status", "--porcelain", "contracts", cwd=ROOT):
@@ -59,7 +68,7 @@ def promote(manifest: Path) -> None:
                 "manifest": "current",
                 "integrated_at": datetime.date.today().isoformat(),
                 "contracts": home,
-                "from_initiative": data["initiative"],
+                **origin,
                 "components": {n: {"sha": p.sha} for n, p in pins.items()},
             },
             header,

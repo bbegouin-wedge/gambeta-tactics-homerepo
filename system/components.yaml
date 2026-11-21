@@ -21,23 +21,36 @@ components:
 
   backend:
     code: BE
-    repo: git@github.com:bbegouin-wedge/gambeta-tactics.git
-    local_path: ../gambeta_tactics_backend
+    repo: git@github.com:bbegouin-wedge/gambeta-server.git
+    local_path: ../gambeta_server
     branch: main
     kind: service
-    stack: python 3.13
+    stack: rust · tokio · axum · postgresql
     summary: >
-      Le serveur de jeu : le moteur qui enchaîne la boucle d'un match (match,
-      manche, tour, ordre, file d'effets) et fait autorité sur l'information
-      cachée. Vide à l'amorçage : seulement les docs de game design.
+      Le service de jeu (ADR 0003) : la passerelle WebSocket des joueurs et
+      des spectateurs, un acteur par match autour d'un moteur de règles pur
+      qui fait autorité sur l'information cachée, et le méta des joueurs
+      (comptes, rosters, matchmaking, classement, historique).
     responsibilities:
+      # Match
       - seul détenteur de l'état d'un match et de son flux d'événements
-      - appliquer les règles du jeu, étape par étape
+      - seul composant qui applique les règles du jeu, étape par étape
       - mélanger les decks et tirer l'initiative (graine enregistrée pour le replay)
       - filtrer l'information cachée par joueur au moment de la diffusion
       - attendre les saisies des joueurs aux points d'attente, et tenir leur pendule
+      - gérer les déconnexions et reconnexions des joueurs en cours de match
+      - journaliser les événements de chaque match, d'où il se rejoue à l'identique
+      # Canal des joueurs
       - pousser les événements et les saisies attendues sur le canal de chaque joueur
-      - de lanière générale, c'est ce composant qui gère les règles du jeu et lui seul
+      - authentifier les joueurs, tenir leurs sessions et les router vers leur match
+      - diffuser un match aux spectateurs, en différé
+      # Méta
+      - tenir les comptes et les rosters des joueurs
+      - mettre les joueurs en file d'attente et les apparier par cote
+      - tenir le classement (Glicko-2) et l'historique des matchs
+      # Hors ligne
+      - simuler des matchs entre bots pour l'équilibrage
+      - analyser les matchs enregistrés pour détecter la triche
     owns_specs: specs/
     gates: {}
 

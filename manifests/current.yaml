@@ -8,12 +8,12 @@
 #             été intégrés (commit du home repo, ou "worktree" à l'amorçage)
 
 manifest: current
-integrated_at: 2026-11-19
-contracts: worktree
-
+integrated_at: '2026-11-21'
+contracts: 5df1fbafb399c237a91b4c8b128d0d1e7d2c4eb2
+from_decision: '0003'
 components:
   backend:
-    sha: 35199e11102699f13c660762f6ee6d0a3ccf5df3
+    sha: 960b7abafb70820bdf9c8c7baf5a76fe6f61b28d
   client:
     sha: 84bb03077d43ec6d8dba552e2cd01b4997c1efcc
   open-duelyst:

@@ -18,7 +18,7 @@ Les composants, leurs dépôts voisins :
 
 | Composant | Code | Dépôt local | Rôle | Reçoit ses epics composant dans |
 |---|---|---|---|---|
-| `backend` | `BE` | `../gambeta_tactics_backend` | serveur de jeu, seul détenteur de l'état d'un match | `specs/` |
+| `backend` | `BE` | `../gambeta_server` | service de jeu Rust : matchs (seul détenteur de leur état), canal des joueurs, méta (ADR 0003) | `specs/` |
 | `client` | `CL` | `../gambeta_tactics_client` | client Godot d'un joueur | `specs/` |
 | `open-duelyst` | — | `../../duelyst` | assets CC0 lus par le client (données, non monté) | — |
 
@@ -71,9 +71,7 @@ Toute évolution du produit naît ici, même si elle ne touche qu'un composant
 - **Contrats** : aucun n'existe encore. Le protocole du canal d'un joueur, et
   la règle qui dit quels contrats sont générés depuis le code et lesquels sont
   écrits à la main, sont fixés par l'initiative I1 et son ADR.
-- **`product/` est la référence du game design.** Une copie en reste dans
-  `../gambeta_tactics_backend/docs/`, à retirer dans le backend ; c'est
-  `product/` qui fait foi.
+- **`product/` est la référence du game design.**
 - **Les composants se lisent au SHA du manifeste**, dans `workspace/`
   (`make workspace`), jamais dans leur clone de travail quand on raisonne sur
   le système. `workspace/` est jetable et ignoré par git ; on n'y commite rien.
