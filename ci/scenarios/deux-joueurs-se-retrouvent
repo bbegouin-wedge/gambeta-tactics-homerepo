@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Scénario de bout en bout I26-E1-S6 : deux joueurs se retrouvent dans un match.
+"""Scénarios de bout en bout I26-E1-S6 et I27-E2-S5 : deux joueurs se retrouvent dans le
+même match, et les traces des deux côtés le disent.
 
     uv run ci/scenarios/deux-joueurs-se-retrouvent [<workspace>]
 
@@ -7,10 +8,15 @@ Contre le workspace monté (par défaut `workspace/`) :
   1. construit le serveur (`workspace/backend`) et le démarre sur un port libre
      (`GAMBETA_ADDR`), puis attend que `/health` réponde ;
   2. lance deux clients Godot sans fenêtre (`workspace/client`) en mode automatique
-     (`--rejoindre --rapport=…`), à 1 s d'écart ;
-  3. vérifie que leurs rapports disent `{"joueur": 1}` et `{"joueur": 2}`.
+     (`--rejoindre --rapport=…`) et avec `--traces`, à 1 s d'écart ;
+  3. vérifie que leurs rapports disent `{"joueur": 1}` et `{"joueur": 2}` ;
+  4. lit les traces recopiées dans leur sortie (`[trace] <origine> <niveau> <quoi>
+     <clé=valeur…> — <message>`) : pour chaque client N, la trace client `match_rejoint`
+     et la trace serveur `apparie`, avec `joueur=N` et le même `match` chez les deux
+     clients. Seuls `quoi` et les champs comptent, jamais le message.
 
-Rend 0 si les deux joueurs se sont retrouvés, 1 sinon (avec les sorties en cause).
+Rend 0 si les deux joueurs se sont retrouvés dans le même match, 1 sinon (avec les sorties
+en cause).
 Godot : variable GODOT, sinon `godot` / `godot4` dans le PATH, sinon l'application macOS.
 """
 
@@ -18,6 +24,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import socket
 import subprocess
@@ -65,7 +72,7 @@ def attendre_sante(url: str, serveur: subprocess.Popen[bytes]) -> None:
 
 
 def client(binaire: str, dossier: Path, adresse: str, rapport: Path, journal: Path) -> subprocess.Popen[bytes]:
-    cmd = [binaire, "--headless", "--path", str(dossier), "--", f"--server={adresse}", "--rejoindre", f"--rapport={rapport}"]
+    cmd = [binaire, "--headless", "--path", str(dossier), "--", f"--server={adresse}", "--rejoindre", f"--rapport={rapport}", "--traces"]
     print(f"   $ {' '.join(cmd)}", flush=True)
     with journal.open("wb") as sortie:
         return subprocess.Popen(cmd, stdout=sortie, stderr=subprocess.STDOUT)
@@ -76,6 +83,43 @@ def lire_rapport(rapport: Path) -> dict[str, object]:
         return json.loads(rapport.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return {}
+
+
+TRACE = re.compile(r"^\[trace\] (\S+) (\S+) (\S+)((?: \S+=\S+)*) — ")
+
+
+def traces(journal: Path) -> list[tuple[str, str, dict[str, str]]]:
+    """Les traces d'une sortie de client : (origine, quoi, champs)."""
+    lues = []
+    for ligne in journal.read_text(encoding="utf-8", errors="replace").splitlines():
+        m = TRACE.match(ligne)
+        if m:
+            champs = dict(c.split("=", 1) for c in m.group(4).split())
+            lues.append((m.group(1), m.group(3), champs))
+    return lues
+
+
+def match_trace(journal: Path, origine: str, quoi: str, joueur: int) -> str | None:
+    """Le `match` de la trace (origine, quoi) qui porte `joueur`, ou None."""
+    for o, q, champs in traces(journal):
+        if o == origine and q == quoi and champs.get("joueur") == str(joueur):
+            return champs.get("match")
+    return None
+
+
+def verifier_traces(journaux: list[Path], joueurs: list[int]) -> list[str]:
+    """Les écarts aux traces attendues (I27-B14) ; vide si tout y est."""
+    ecarts, matchs = [], set()
+    for nom, journal, joueur in zip("AB", journaux, joueurs):
+        for origine, quoi in (("client", "match_rejoint"), ("serveur", "apparie")):
+            id_match = match_trace(journal, origine, quoi, joueur)
+            if id_match is None:
+                ecarts.append(f"client {nom} : pas de trace {origine} `{quoi}` joueur={joueur} match=…")
+            else:
+                matchs.add(id_match)
+    if len(matchs) > 1:
+        ecarts.append(f"les traces citent plusieurs matchs : {sorted(matchs)}")
+    return ecarts
 
 
 def run(workspace: Path) -> int:
@@ -106,9 +150,16 @@ def run(workspace: Path) -> int:
         lus = [lire_rapport(r) for r in rapports]
         codes = [c.returncode for c in clients]
         print(f"   rapports : A {lus[0]} (code {codes[0]}), B {lus[1]} (code {codes[1]})", flush=True)
-        if codes == [0, 0] and sorted(r.get("joueur", 0) for r in lus) == [1, 2]:  # type: ignore[type-var]
+        joueurs = [int(r.get("joueur", 0)) for r in lus]  # type: ignore[call-overload]
+        if codes == [0, 0] and sorted(joueurs) == [1, 2]:
             print("   ✓ les deux joueurs se sont retrouvés : joueurs 1 et 2", flush=True)
-            return 0
+            ecarts = verifier_traces(journaux, joueurs)
+            if not ecarts:
+                id_match = match_trace(journaux[0], "client", "match_rejoint", joueurs[0])
+                print(f"   ✓ les traces des deux clients citent le même match : {id_match}", flush=True)
+                return 0
+            for e in ecarts:
+                print(f"   ✗ {e}", file=sys.stderr)
         for nom, journal in (("serveur", journal_serveur), ("client A", journaux[0]), ("client B", journaux[1])):
             print(f"\n── {nom} ({journal})\n{journal.read_text(encoding='utf-8', errors='replace')[-3000:]}")
         print("   ✗ les deux joueurs ne se sont pas retrouvés", file=sys.stderr)
