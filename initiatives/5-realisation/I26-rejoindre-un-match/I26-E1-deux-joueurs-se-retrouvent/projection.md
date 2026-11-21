@@ -35,6 +35,17 @@ au BC jeu d'ouvrir une salle de match pour la paire formée. Le match d'I26 ne l
 encore l'automate (`gambeta_rules` est vide) : la salle tient les deux connexions ; la
 mise en place du match y branchera l'automate.
 
+### Décision d'architecture appliquée (client)
+
+Le client a désormais un schéma directeur, `docs/architecture.md` (grilling
+d'architecture du 2026-11-21) : hexagone avec un port `ServerPort` qui transporte des
+messages typés, des adaptateurs choisis au démarrage par l'autoload `App`
+(`WebSocketServer` ; `FakeServer` et ses scénarios, `--server=fake:<scénario>`, pour
+jouer le client sans serveur), `Session` (intentions) et `SessionStore` (état de
+session), et un `Parcours` qui décide des écrans. Le « lien `ServerLink` dans
+`scripts/net/` » cité par `I26-E1-CL` était un exemple : il est réalisé par ce port et
+ses adaptateurs. `make arch` du client fait respecter les frontières.
+
 ## Contrats
 
 ### `contracts/canal-joueur.md` — nouveau, écrit à la main (action H1)
@@ -125,4 +136,4 @@ Markdown ; `CLAUDE.md` (règle « Contrats ») ne renvoie plus à l'ancienne I1.
 ## Relectures
 
 - **backend** : faite et réalisée le 2026-11-21, branche `I26-E2-BE` de `gambeta_server` (commit `3f6a6ba`). Écart : la porte `test-quality` de l’usine n’a pas tourné (usine en pause) ; la forme `given_` / `when_` / `then_` est suivie à la main.
-- **client** : à faire, dans `gambeta_tactics_client` (lire `I26-E1-CL`).
+- **client** : faite et réalisée le 2026-11-21, branche `I26-E1-CL` de `gambeta_tactics_client` (commit `4063ea8`). Vérifié à la main : deux clients `--headless` en mode automatique contre le serveur de `I26-E2-BE` écrivent `{"joueur":1}` et `{"joueur":2}` ; un serveur injoignable fait sortir avec 1.

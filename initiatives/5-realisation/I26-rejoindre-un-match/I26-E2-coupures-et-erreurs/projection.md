@@ -54,4 +54,4 @@ vaut départ ». Cet epic les fait exister des deux côtés.
 ## Relectures
 
 - **backend** : faite et réalisée le 2026-11-21, branche `I26-E2-BE` de `gambeta_server` (commit `56844e3`).
-- **client** : à faire, dans `gambeta_tactics_client` (lire `I26-E2-CL`).
+- **client** : faite et réalisée le 2026-11-21, branche `I26-E2-CL` de `gambeta_tactics_client` (commit `f91b9ab`). Écart : le point 4 (mode automatique et `adversaire_deconnecte`) est sans objet, le mode automatique quittant dès `match_trouve` (I26-E1-CL) ; il n'a pas de test.
