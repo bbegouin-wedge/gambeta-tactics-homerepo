@@ -1,11 +1,13 @@
 ---
 id: I2
 title: Créer et rejoindre un match Initiation
+status: in_progress
+pulled: 2026-11-21
 origine:
   type: idee
   par: humain
   le: 2026-11-19
-  source: "product/Boucle de gameplay — étapes techniques.md"
+  source: product/Boucle de gameplay — étapes techniques.md
 ---
 
 # I2 — Créer et rejoindre un match Initiation

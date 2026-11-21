@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Page d'accueil</title>
+<meta name="needs" content="I25-B1 I25-B2 I25-B3 I25-B4 I25-B5 I25-B6 I25-B7 I25-B8 I25-B9 I25-B10 I25-B11 I25-B12 I25-B13">
+<style>
+  /* Polices : uniquement des fichiers du clone du client (servis par l'usine).
+     Police de secours volontairement « machine à écrire » (Courier) : si elle apparaît, la police n'est pas chargée. */
+  @font-face { font-family: "LatoBlack"; font-weight: 900; font-style: normal;
+    src: url("file:///Users/bagouze/Repositories/01-code_projects/03-gamebeta_tactics/gambeta_tactics_client/assets/fonts/Lato-Black.ttf") format("truetype"); }
+  @font-face { font-family: "LatoBold"; font-weight: 700; font-style: normal;
+    src: url("file:///Users/bagouze/Repositories/01-code_projects/03-gamebeta_tactics/gambeta_tactics_client/assets/fonts/Lato-Bold.ttf") format("truetype"); }
+  @font-face { font-family: "AnonProBold"; font-weight: 700; font-style: normal;
+    src: url("file:///Users/bagouze/Repositories/01-code_projects/03-gamebeta_tactics/gambeta_tactics_client/addons/gut/fonts/AnonymousPro-Bold.ttf") format("truetype"); }
+
+  body { margin: 0; padding: 24px; background: #1b1d22; color: #d8dae0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+  h1.doc { font-size: 20px; margin: 0 0 4px; }
+  h2.doc { font-size: 16px; margin: 40px 0 8px; border-bottom: 1px solid #3a3d45; padding-bottom: 4px; }
+  h3.doc { font-size: 14px; margin: 22px 0 6px; color: #e8eaef; }
+  p.note { font-size: 13px; color: #9a9ea8; max-width: 980px; margin: 4px 0 12px; }
+  .alerte { font-size: 13px; color: #ffd9b0; background: #3a2a1a; border: 1px solid #e0a46c; padding: 8px 12px; max-width: 956px; margin: 8px 0 14px; }
+  code { background: #2a2d34; padding: 1px 4px; border-radius: 3px; font-size: 12px; }
+  .temoin { font-size: 11px; color: #ffd9b0; margin-top: 4px; }
+
+  /* Fenêtre du jeu : 1920 × 1080 dans le client, montrée à l'échelle 1/2 (960 × 540) */
+  .ecran { position: relative; width: 960px; height: 540px; overflow: hidden; border: 2px solid #000; box-shadow: 0 4px 24px rgba(0,0,0,.6); }
+  .calque { position: absolute; inset: 0; background-repeat: no-repeat; background-size: cover; background-position: center top; }
+  .etiquette { position: absolute; font-size: 11px; color: rgba(255,255,255,.95);
+    border: 1px dashed rgba(255,255,255,.6); padding: 3px 6px; background: rgba(0,0,0,.5); z-index: 5; }
+  .etiquette.fond { left: 12px; bottom: 10px; }
+  .etiquette.reco { right: 12px; top: 10px; border-color: #e0a46c; color: #ffd9b0; }
+
+  /* Fond : arène Vanar (glace), déjà importée par le client (assets/arenas/maps/vanar/), retenue en Q8. */
+  .b-fond   { background-image: url("file:///Users/bagouze/Repositories/01-code_projects/03-gamebeta_tactics/gambeta_tactics_client/assets/arenas/maps/vanar/background.jpg"),
+                                linear-gradient(180deg, #2a86cf 0%, #bfeef5 25%, #cbe9ef 60%, #d6ebdc 100%); }
+  .b-milieu { background-image: url("file:///Users/bagouze/Repositories/01-code_projects/03-gamebeta_tactics/gambeta_tactics_client/assets/arenas/maps/vanar/midground.png"); }
+  .voile { position: absolute; inset: 0; z-index: 2;
+    background: radial-gradient(ellipse at 50% 48%, rgba(4,8,18,.55) 0%, rgba(4,8,18,.30) 50%, rgba(4,8,18,.06) 85%); }
+
+  /* ---------- Titres : pistes « sci-fi » ---------- */
+  .titre { position: absolute; left: 0; right: 0; text-align: center; z-index: 4; line-height: 1; white-space: nowrap; }
+  /* S1 : Lato Black « HUD » : capitales étirées en largeur, très espacées, liseré cyan lumineux.
+     Godot : FontVariation (transform échelle X 1,3 + espacement) et contour/ombre du Label. Aucun fichier ajouté. */
+  .s1 { font-family: "LatoBlack", "Courier New", Courier, monospace; font-weight: 900; text-transform: uppercase;
+        color: #eafcff; display: inline-block; transform: scaleX(1.3);
+        -webkit-text-stroke: 2px #0b2a3a; paint-order: stroke fill;
+        text-shadow: 0 0 6px #35e0ff, 0 0 18px rgba(53,224,255,.75), 0 3px 0 #06202c; }
+  .s1-sous { font-family: "LatoBold", "Courier New", Courier, monospace; font-weight: 700; text-transform: uppercase;
+        color: #8ff0ff; text-shadow: 0 0 8px rgba(53,224,255,.8), 0 1px 2px #000; }
+  /* S2 : Anonymous Pro Bold « terminal » : chasse fixe, capitales, cyan, déjà dans le dépôt du client (addons/gut/fonts/). */
+  .s2 { font-family: "AnonProBold", "Courier New", Courier, monospace; font-weight: 700; text-transform: uppercase;
+        color: #b9f6ff; -webkit-text-stroke: 1px #06202c; paint-order: stroke fill;
+        text-shadow: 0 0 10px rgba(53,224,255,.85), 0 2px 0 #06202c; }
+
+  /* ---------- Bouton ---------- */
+  .bouton { position: absolute; left: 50%; transform: translateX(-50%); z-index: 4;
+    background: center / contain no-repeat; color: #fff; text-transform: uppercase; text-shadow: 0 1px 2px rgba(0,0,0,.8);
+    display: flex; align-items: center; justify-content: center; box-sizing: border-box; }
+  .forme-fleche { width: 255px; height: 105px; padding-right: 14px; }   /* button_end_turn_*@2x.png, 510 × 210 */
+  .forme-plaque { width: 300px; height: 100px; }                         /* button_primary@2x.png / button_confirm@2x.png */
+  .t-s1 { font-family: "LatoBlack", "Courier New", monospace; font-weight: 900; font-size: 20px; letter-spacing: 3px; }
+  /* Images d'OpenDuelyst : repère pointillé visible si l'usine ne sert pas l'image (voir l'alerte en tête). */
+  .od { outline: 2px dashed #ff8a5c; outline-offset: -2px; }
+
+  /* B0 : bouton « VALIDER » de l'écran de match, déjà dans le client : s'affiche toujours. */
+  .b0-repos  { background-image: url("file:///Users/bagouze/Repositories/01-code_projects/03-gamebeta_tactics/gambeta_tactics_client/assets/ui/button_validate.png"); }
+  .b0-gris   { background-image: url("file:///Users/bagouze/Repositories/01-code_projects/03-gamebeta_tactics/gambeta_tactics_client/assets/ui/button_validate.png");
+               filter: grayscale(1) brightness(.6); }
+  .b0-survol { background-image: url("file:///Users/bagouze/Repositories/01-code_projects/03-gamebeta_tactics/gambeta_tactics_client/assets/ui/button_validate.png");
+               filter: brightness(1.25) drop-shadow(0 0 8px rgba(255,230,120,.9)); }
+  /* B1 : plaque bleue « primary » (OpenDuelyst) */
+  .b1-repos  { background-image: url("file:///Users/bagouze/Repositories/01-code_projects/03-gamebeta_tactics/duelyst/app/resources/ui/button_primary@2x.png"); }
+  .b1-survol { background-image: url("file:///Users/bagouze/Repositories/01-code_projects/03-gamebeta_tactics/duelyst/app/resources/ui/button_primary_glow@2x.png"); }
+  .b1-gris   { background-image: url("file:///Users/bagouze/Repositories/01-code_projects/03-gamebeta_tactics/duelyst/app/resources/ui/button_primary@2x.png");
+               filter: brightness(.5); opacity: .85; }
+  /* B2 : flèche verte « fin de tour terminée », même forme que VALIDER (OpenDuelyst) */
+  .b2-repos  { background-image: url("file:///Users/bagouze/Repositories/01-code_projects/03-gamebeta_tactics/duelyst/app/resources/ui/button_end_turn_finished@2x.png"); }
+  .b2-survol { background-image: url("file:///Users/bagouze/Repositories/01-code_projects/03-gamebeta_tactics/duelyst/app/resources/ui/button_end_turn_finished_glow@2x.png"); }
+  .b2-gris   { background-image: url("file:///Users/bagouze/Repositories/01-code_projects/03-gamebeta_tactics/duelyst/app/resources/ui/button_end_turn_enemy@2x.png"); }
+  /* B3 : plaque verte « confirm » (OpenDuelyst) */
+  .b3-repos  { background-image: url("file:///Users/bagouze/Repositories/01-code_projects/03-gamebeta_tactics/duelyst/app/resources/ui/button_confirm@2x.png"); }
+  .b3-survol { background-image: url("file:///Users/bagouze/Repositories/01-code_projects/03-gamebeta_tactics/duelyst/app/resources/ui/button_confirm_glow@2x.png"); }
+  .b3-gris   { background-image: url("file:///Users/bagouze/Repositories/01-code_projects/03-gamebeta_tactics/duelyst/app/resources/ui/button_confirm@2x.png");
+               filter: brightness(.5); opacity: .85; }
+
+  .legende { font-size: 12px; color: #9a9ea8; margin-top: 8px; max-width: 980px; }
+  .legende li { margin: 3px 0; }
+
+  .rangee { display: flex; gap: 20px; flex-wrap: wrap; }
+  .vig { width: 310px; height: 174px; border: 2px solid #000; position: relative; overflow: hidden; }
+  .vig .bouton { top: 36px; }
+  .vig-nom { font-size: 12px; color: #d8dae0; margin-top: 6px; max-width: 310px; }
+  .vig-titre { width: 470px; height: 220px; border: 2px solid #000; position: relative; overflow: hidden; }
+  .vig-nom.large { max-width: 470px; }
+
+  .parcours { display: flex; align-items: center; gap: 24px; }
+  .vignette { width: 300px; height: 169px; border: 2px solid #000; position: relative; overflow: hidden; font-size: 12px; }
+  .vignette.match { background: repeating-linear-gradient(45deg, #2b2e35 0 10px, #31353d 10px 20px); color: #c9ccd3;
+    display: flex; align-items: center; justify-content: center; text-align: center; padding: 12px; box-sizing: border-box; }
+  .fleche { font-size: 13px; color: #d8dae0; text-align: center; }
+  .fleche .f { font-size: 32px; line-height: 1; }
+  .sans-retour { font-size: 13px; color: #e0a46c; margin-top: 10px; }
+</style>
+</head>
+<body>
+
+<h1 class="doc">I25-M1 — Page d'accueil</h1>
+<p class="note">Premier écran affiché au lancement du client, avant tout autre (I25-B1). Décor : l'arène de glace Vanar, déjà importée par le client (Q8). Un seul élément interactif, « Rejoindre un match », sélectionné à l'ouverture pour répondre à Entrée ou Espace (I25-B4, I25-B10, Q3). Le nom « Gambeta Tactics » est en texte, sans logo ni mention « Duelyst » (I25-B2, I25-B11).</p>
+
+<div class="alerte" data-id="I25-M1-alerte-images">
+  <strong>Pourquoi tu ne voyais pas les boutons (Q15).</strong> Les boutons B1, B2 et B3 viennent du clone d'OpenDuelyst sur ta machine
+  (<code>03-gamebeta_tactics/duelyst/</code>). Or <code>system/components.yaml</code> déclare ce clone à <code>../../duelyst</code>,
+  c'est-à-dire <code>01-code_projects/duelyst/</code>, qui n'existe pas : l'usine ne sert donc pas ces images.
+  Dans cette version, <strong>un bouton entouré d'un pointillé orange sans image est une image d'OpenDuelyst non servie</strong>.
+  Tout ce qui vient du clone du client (fond Vanar, polices, bouton B0) s'affiche normalement.
+</div>
+
+<p class="note"><strong>Deux choix restent ouverts</strong> : la police du titre (section 2 : deux pistes sci-fi, visibles ici, et une troisième à télécharger) et l'habillage du bouton (section 3). La section 1 montre la combinaison que je recommande, <strong>en attente de ta décision</strong>.</p>
+
+<!-- ============================================================ -->
+<h2 class="doc">1. État à l'ouverture (combinaison recommandée : titre S1, bouton B1)</h2>
+
+<div class="ecran" data-id="I25-M1-ecran-accueil">
+  <div data-id="I25-M1-fond-arene">
+    <div class="calque b-fond"></div>
+    <div class="calque b-milieu"></div>
+  </div>
+  <div class="voile"></div>
+  <div class="etiquette fond">Vanar · assets/arenas/maps/vanar/* (déjà importé)</div>
+  <div class="etiquette reco">Recommandation : titre S1 + bouton B1, à confirmer</div>
+  <div data-id="I25-M1-titre-jeu">
+    <div class="titre" style="top: 96px;"><span class="s1" style="font-size: 84px; letter-spacing: 10px;">Gambeta</span></div>
+    <div class="titre s1-sous" style="top: 196px; font-size: 26px; letter-spacing: 26px; padding-left: 26px;">Tactics</div>
+  </div>
+  <div class="bouton forme-plaque b1-repos od t-s1" data-id="I25-M1-btn-rejoindre-match" role="button" style="top: 310px;">Rejoindre un match</div>
+</div>
+
+<ul class="legende">
+  <li><code>I25-M1-ecran-accueil</code> : la scène lancée au démarrage du client (I25-B1).</li>
+  <li><code>I25-M1-fond-arene</code> : l'arène Vanar, calques <code>background.jpg</code> et <code>midground.png</code> pris tels quels, sans grille ni unité (I25-B3, I25-B12). Un voile sombre au centre garde le titre et le bouton lisibles sur ce fond très clair.</li>
+  <li><code>I25-M1-titre-jeu</code> : le nom du jeu, police et traitement selon le choix de la section 2 ; sans logo (I25-B2, I25-B11).</li>
+  <li><code>I25-M1-btn-rejoindre-match</code> : seul élément interactif de la page, sélectionné à l'ouverture (Entrée ou Espace l'activent). Image selon le choix de la section 3. Un clic ouvre l'écran de match existant sans appeler le serveur (I25-B4, I25-B5, I25-B7, I25-B10).</li>
+</ul>
+
+<!-- ============================================================ -->
+<h2 class="doc">2. Police du titre : pistes « sci-fi » (à choisir)</h2>
+<p class="note">Tu as demandé une police plus sci-fi (Q14). Aucune police sci-fi n'est dans le client ni dans OpenDuelyst. S1 et S2 utilisent des fichiers déjà dans le dépôt du client et s'affichent ci-dessous. S3 demande de télécharger une police : je ne peux pas te la montrer ici. Le texte du bouton suit le même choix.</p>
+
+<div class="rangee" data-id="I25-M1-police">
+  <div>
+    <div class="vig-titre" data-id="I25-M1-police-s1">
+      <div class="calque b-fond"></div><div class="voile"></div>
+      <div class="titre" style="top: 52px;"><span class="s1" style="font-size: 56px; letter-spacing: 7px;">Gambeta</span></div>
+      <div class="titre s1-sous" style="top: 122px; font-size: 18px; letter-spacing: 18px; padding-left: 18px;">Tactics</div>
+    </div>
+    <div class="vig-nom large"><strong>S1 — Lato Black « affichage tête haute »</strong> : capitales élargies et très espacées, liseré cyan lumineux, « TACTICS » plus petit et très espacé dessous. C'est la police déjà dans le client, transformée par le moteur (élargissement, espacement, contour et halo) : <strong>aucun fichier ajouté</strong>, Q4 et I25-B12 restent intactes.</div>
+    <div class="temoin">En Courier ? La police n'est pas chargée.</div>
+  </div>
+  <div>
+    <div class="vig-titre" data-id="I25-M1-police-s2">
+      <div class="calque b-fond"></div><div class="voile"></div>
+      <div class="titre s2" style="top: 60px; font-size: 54px; letter-spacing: 4px;">Gambeta</div>
+      <div class="titre s2" style="top: 124px; font-size: 26px; letter-spacing: 14px; padding-left: 14px;">&gt; Tactics_</div>
+    </div>
+    <div class="vig-nom large"><strong>S2 — Anonymous Pro Bold « terminal »</strong> : chasse fixe, capitales, cyan, comme un écran de console. Police libre (OFL) déjà dans le dépôt du client, mais seulement dans l'outil de tests (<code>addons/gut/fonts/</code>) : il faut la copier dans <code>assets/fonts/</code>, ce qui fait une exception à I25-B12.</div>
+    <div class="temoin">En Courier ? La police n'est pas chargée.</div>
+  </div>
+</div>
+<p class="note" data-id="I25-M1-police-s3"><strong>S3 — une vraie police sci-fi libre, à télécharger</strong> (Orbitron, Audiowide, Exo 2 ou Rajdhani, toutes sous licence OFL). Elle n'est pas sur ta machine, donc invisible ici. Si tu veux la voir, télécharge-la dans le clone du client et je la montrerai dans la prochaine version. Exception à Q4 et à I25-B12.</p>
+
+<!-- ============================================================ -->
+<h2 class="doc">3. Bouton « Rejoindre un match » (à choisir)</h2>
+<p class="note">Chaque bouton est montré au repos (et sélectionné à l'ouverture), au survol (version lumineuse, Q9) et après le clic. Après le premier clic, le bouton est désactivé jusqu'au changement d'écran : un seul match s'ouvre (I25-B13), sans message d'attente (Q6). Texte montré en police S1. <strong>Pointillé orange sans image : image d'OpenDuelyst non servie</strong> (voir l'alerte en tête).</p>
+
+<h3 class="doc">B0 — Le bouton « VALIDER » de l'écran de match (<code>assets/ui/button_validate.png</code>, déjà dans le client)</h3>
+<div class="rangee" data-id="I25-M1-bouton-b0">
+  <div><div class="vig"><div class="calque b-fond"></div><div class="voile"></div>
+    <div class="bouton forme-fleche b0-repos t-s1" style="font-size: 15px;">Rejoindre un match</div></div>
+    <div class="vig-nom"><strong>Repos</strong> : l'image de « VALIDER », telle qu'en match.</div></div>
+  <div><div class="vig"><div class="calque b-fond"></div><div class="voile"></div>
+    <div class="bouton forme-fleche b0-survol t-s1" style="font-size: 15px;">Rejoindre un match</div></div>
+    <div class="vig-nom"><strong>Survol</strong> : ici simulé en éclaircissant l'image. Dans le jeu : <code>button_end_turn_mine_glow@2x.png</code> d'OpenDuelyst, à importer.</div></div>
+  <div><div class="vig"><div class="calque b-fond"></div><div class="voile"></div>
+    <div class="bouton forme-fleche b0-gris t-s1" style="font-size: 15px;" aria-disabled="true">Rejoindre un match</div></div>
+    <div class="vig-nom"><strong>Après le clic</strong> : ici simulé en grisant l'image. Dans le jeu : <code>button_end_turn_enemy@2x.png</code>, la version non éclairée, à importer.</div></div>
+</div>
+
+<h3 class="doc">B1 — Plaque bleue (<code>ui/button_primary*</code>) : s'accorde avec la glace de Vanar</h3>
+<div class="rangee" data-id="I25-M1-bouton-b1">
+  <div><div class="vig"><div class="calque b-fond"></div><div class="voile"></div>
+    <div class="bouton forme-plaque b1-repos od t-s1">Rejoindre un match</div></div>
+    <div class="vig-nom"><strong>Repos</strong> : <code>button_primary@2x.png</code>.</div></div>
+  <div><div class="vig"><div class="calque b-fond"></div><div class="voile"></div>
+    <div class="bouton forme-plaque b1-survol od t-s1" data-id="I25-M1-btn-rejoindre-match-survol">Rejoindre un match</div></div>
+    <div class="vig-nom"><strong>Survol</strong> : <code>button_primary_glow@2x.png</code>.</div></div>
+  <div><div class="vig"><div class="calque b-fond"></div><div class="voile"></div>
+    <div class="bouton forme-plaque b1-gris od t-s1" data-id="I25-M1-btn-rejoindre-match-desactive" aria-disabled="true">Rejoindre un match</div></div>
+    <div class="vig-nom"><strong>Après le clic</strong> : la même image assombrie par le moteur (pas de version grise dans OpenDuelyst). Sans effet.</div></div>
+</div>
+
+<h3 class="doc">B2 — Flèche verte (<code>ui/button_end_turn_finished*</code>) : même forme que « VALIDER », couleur « prêt »</h3>
+<div class="rangee" data-id="I25-M1-bouton-b2">
+  <div><div class="vig"><div class="calque b-fond"></div><div class="voile"></div>
+    <div class="bouton forme-fleche b2-repos od t-s1" style="font-size: 15px;">Rejoindre un match</div></div>
+    <div class="vig-nom"><strong>Repos</strong> : <code>button_end_turn_finished@2x.png</code>.</div></div>
+  <div><div class="vig"><div class="calque b-fond"></div><div class="voile"></div>
+    <div class="bouton forme-fleche b2-survol od t-s1" style="font-size: 15px;">Rejoindre un match</div></div>
+    <div class="vig-nom"><strong>Survol</strong> : <code>button_end_turn_finished_glow@2x.png</code>.</div></div>
+  <div><div class="vig"><div class="calque b-fond"></div><div class="voile"></div>
+    <div class="bouton forme-fleche b2-gris od t-s1" style="font-size: 15px;" aria-disabled="true">Rejoindre un match</div></div>
+    <div class="vig-nom"><strong>Après le clic</strong> : <code>button_end_turn_enemy@2x.png</code>, la version grise de la même flèche. Sans effet.</div></div>
+</div>
+
+<h3 class="doc">B3 — Plaque verte (<code>ui/button_confirm*</code>) : forme de B1, couleur de B2</h3>
+<div class="rangee" data-id="I25-M1-bouton-b3">
+  <div><div class="vig"><div class="calque b-fond"></div><div class="voile"></div>
+    <div class="bouton forme-plaque b3-repos od t-s1">Rejoindre un match</div></div>
+    <div class="vig-nom"><strong>Repos</strong> : <code>button_confirm@2x.png</code>.</div></div>
+  <div><div class="vig"><div class="calque b-fond"></div><div class="voile"></div>
+    <div class="bouton forme-plaque b3-survol od t-s1">Rejoindre un match</div></div>
+    <div class="vig-nom"><strong>Survol</strong> : <code>button_confirm_glow@2x.png</code>.</div></div>
+  <div><div class="vig"><div class="calque b-fond"></div><div class="voile"></div>
+    <div class="bouton forme-plaque b3-gris od t-s1" aria-disabled="true">Rejoindre un match</div></div>
+    <div class="vig-nom"><strong>Après le clic</strong> : la même image assombrie par le moteur. Sans effet.</div></div>
+</div>
+
+<ul class="legende">
+  <li>Toutes les pistes demandent d'importer deux ou trois images d'OpenDuelyst dans le client (B0 compris, pour le survol et l'état grisé), sans en dessiner ni en retoucher aucune.</li>
+  <li><code>I25-M1-btn-rejoindre-match-survol</code> et <code>I25-M1-btn-rejoindre-match-desactive</code> désignent le survol et l'état désactivé du bouton, quelle que soit la piste retenue. Désactivé dès le premier clic ou appui, jusqu'au changement d'écran ; les clics et appuis suivants n'ont aucun effet (I25-B13). Rien n'est demandé au serveur (I25-B7).</li>
+  <li>Le bouton est le seul de la page et a le focus dès l'ouverture : aucun cadre de focus n'est ajouté.</li>
+</ul>
+
+<!-- ============================================================ -->
+<h2 class="doc">4. Parcours : accueil → écran de match, sans retour</h2>
+<p class="note">La page d'accueil est remplacée par l'écran de match existant, <code>scenes/mockup/mockup.tscn</code>, construit depuis <code>data/cards.json</code> comme quand on le lance directement (I25-B5, I25-B6). L'écran de match n'est pas modifié (I25-B9) : il n'a ni bouton ni touche pour revenir à l'accueil (I25-B8).</p>
+
+<div class="parcours" data-id="I25-M1-parcours">
+  <div class="vignette">
+    <div class="calque b-fond"></div>
+    <div class="voile"></div>
+    <div class="titre" style="top: 34px;"><span class="s1" style="font-size: 28px; letter-spacing: 3px;">Gambeta</span></div>
+    <div class="titre s1-sous" style="top: 70px; font-size: 10px; letter-spacing: 9px; padding-left: 9px;">Tactics</div>
+    <div class="bouton forme-fleche b0-repos t-s1" style="top: 96px; width: 120px; height: 50px; font-size: 8px; letter-spacing: 1px;">Rejoindre un match</div>
+  </div>
+  <div class="fleche"><div class="f">→</div>clic</div>
+  <div class="vignette match" data-id="I25-M1-ecran-match-existant">
+    Écran de match existant<br><code>scenes/mockup/mockup.tscn</code><br>(inchangé)
+  </div>
+</div>
+<p class="sans-retour" data-id="I25-M1-regle-sens-unique">Sens unique : aucun retour vers l'accueil depuis l'écran de match (I25-B8). Quitter l'écran de match, c'est fermer le jeu.</p>
+
+</body>
+</html>

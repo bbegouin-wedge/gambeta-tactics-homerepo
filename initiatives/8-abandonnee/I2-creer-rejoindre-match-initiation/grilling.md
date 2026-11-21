@@ -1,0 +1,10 @@
+# I2 — Grilling
+
+## Questions et réponses
+
+### Q1 — Faut-il continuer I2 ou l'abandonner au profit de I21 « Runtime et lobby » (et I19, I20), qui la remplacent selon votre plan « première boucle jouable » ?
+
+I2 est en grilling, mais trois initiatives du backlog, déposées le 2026-11-21, disent qu'elle est remplacée. I21 (« Runtime et lobby ») : « remplace notamment l'ancienne I2 « Créer et rejoindre un match Initiation » » ; elle couvre CreateMatch / JoinMatch, l'acteur qui instancie le moteur une fois la partie pleine, le journal et les numéros de séquence. I19 (« Règles v0 de la boucle ») : « remplace, avec les cinq autres idées du plan, les anciennes initiatives du backlog I1 à I16 et I18 » ; elle couvre la création et la jonction, le tirage de la main et de l'initiative, avec un Ruleset paramétrable. I20 (« Moteur de la première boucle ») couvre l'étape Setup. Le plan cible une première boucle qui ne parle pas du mode Initiation, alors que I2 en dépend : arène réduite, 3 unités, une seule manche, sans combos. Le game design v0.16 ne donne d'ailleurs pas la taille de l'« arène réduite » ni le contenu du deck Initiation. Mener le grilling de I2 produirait des besoins en double, voire contradictoires, avec I19, I20 et I21 (lobby, Setup, decks, initiative). Cette décision conditionne tout le reste.
+
+**Recommandation :** Abandonner I2 (vers 8-abandonnee/) et reporter ce qui lui est propre, le mode Initiation (arène réduite, 3 unités, deck sans combos), comme question ouverte dans I19 ou paramètre du Ruleset. Votre plan dit explicitement que I21 la remplace, et la garder ferait spécifier deux fois la création, la jonction et le setup du match.
+**Réponse :** D'accord avec la recommandation : Abandonner I2 (vers 8-abandonnee/) et reporter ce qui lui est propre, le mode Initiation (arène réduite, 3 unités, deck sans combos), comme question ouverte dans I19 ou paramètre du Ruleset. Votre plan dit explicitement que I21 la remplace, et la garder ferait spécifier deux fois la création, la jonction et le setup du match.
