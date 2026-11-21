@@ -8,7 +8,8 @@
 #   local_path    clone de travail, relatif à la racine du home repo
 #   branch        branche d'intégration du composant
 #   kind          service | client | test-double | data | external
-#   gates         cibles du composant, appelées par ci/integrate (aucune encore)
+#   gates         commandes du composant, lancées par ci/integrate dans son clone
+#                 monté (workspace/<composant>/) : install, puis test
 #   extractor     script de scripts/extractors/ qui régénère les contrats
 #                 fournis, depuis le code du composant (aucun encore)
 #   owns_specs    où le composant reçoit ses epics composant
@@ -52,7 +53,9 @@ components:
       - simuler des matchs entre bots pour l'équilibrage
       - analyser les matchs enregistrés pour détecter la triche
     owns_specs: specs/
-    gates: {}
+    gates:
+      install: make install   # dépendances depuis Cargo.lock, cargo-nextest
+      test: make check        # lint, typecheck, arch (schéma directeur), tests
 
   client:
     code: CL
