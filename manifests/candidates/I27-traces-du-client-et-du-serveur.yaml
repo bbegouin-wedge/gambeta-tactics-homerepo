@@ -1,7 +1,0 @@
-manifest: candidate
-initiative: I27-traces-du-client-et-du-serveur
-components:
-  backend:
-    sha: 9844b73054b0618d7e03addbcd6ce64af31c533b   # I27-E2-BE
-  client:
-    sha: d0ce938a28a541de05bdb09354a80fcd040458b9   # I27-E1-CL, I27-E2-CL (et l'arène, b521249)
