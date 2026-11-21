@@ -103,7 +103,11 @@ Markdown ; `CLAUDE.md` (règle « Contrats ») ne renvoie plus à l'ancienne I1.
   lance deux clients Godot `--headless` en mode automatique (`I26-E1-CL`, point 5) à
   1 s d'écart, et vérifie que leurs rapports disent `1` et `2`. Déclarer aussi les portes
   du client dans `system/components.yaml` (`install: make install`, `test: make test`).
-  Dépend de `I26-E1-BE` et `I26-E1-CL` livrés.
+  Dépend de `I26-E1-BE` et `I26-E1-CL` livrés. **Fait le 2026-11-21.** Écart : la porte
+  `test` du client est `make check` (lint, typecheck, arch, tests GUT) et non `make test`,
+  comme celle du backend ; les erreurs de lint antérieures à I26 ont été corrigées dans le
+  client pour cela. L'étape des scénarios est sautée avec `--skip-gates`, puisqu'elle
+  suppose les portes passées (import Godot, serveur compilé).
 - **Racine** (hors dépôts) : `make run-client SERVER=…` transmet `--server=…` au client
   (I26-B18, S4). À faire avec `I26-E1-CL`.
 

@@ -10,8 +10,10 @@
   1. structure    scripts/checks/structure
   2. workspace    scripts/workspace <manifeste>
   3. portes       pour chaque composant monté : gates.install puis gates.test
-  4. contrats     scripts/checks/drift --contracts
-  5. promotion    (--promote, candidat seulement) current.yaml prend les SHA du
+  4. scénarios    chaque exécutable de ci/scenarios/, contre le workspace monté
+                  (sautés avec --skip-gates : ils supposent les portes passées)
+  5. contrats     scripts/checks/drift --contracts
+  6. promotion    (--promote, candidat seulement) current.yaml prend les SHA du
                   candidat ; le candidat est supprimé. Commit à faire ensuite.
                   Un candidat d'adoption (`decision: "NNNN"`) n'est promu que si
                   sa décision est acceptée.
@@ -21,6 +23,7 @@ from __future__ import annotations
 
 import argparse
 import datetime
+import os
 import shlex
 import subprocess
 import sys
@@ -38,6 +41,9 @@ from homerepo import (  # noqa: E402
     main_guard,
     resolve_manifest,
 )
+
+
+SCENARIOS = ROOT / "ci" / "scenarios"
 
 
 def step(title: str, cmd: list[str], cwd: Path = ROOT) -> None:
@@ -83,7 +89,7 @@ def run() -> int:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("manifest", nargs="?", type=Path, default=CURRENT)
     p.add_argument("--remote", action="store_true", help="cloner depuis les remotes (CI)")
-    p.add_argument("--skip-gates", action="store_true", help="sauter les portes des composants")
+    p.add_argument("--skip-gates", action="store_true", help="sauter les portes des composants et les scénarios")
     p.add_argument("--promote", action="store_true")
     a = p.parse_args()
     manifest = a.manifest.resolve()
@@ -104,6 +110,10 @@ def run() -> int:
             for gate in ("install", "test"):
                 if gates.get(gate):
                     step(f"{name} · {gate}", shlex.split(gates[gate]), WORKSPACE / name)
+
+        for scenario in sorted(SCENARIOS.iterdir()) if SCENARIOS.is_dir() else []:
+            if scenario.is_file() and os.access(scenario, os.X_OK):
+                step(f"scénario · {scenario.name}", [py, str(scenario), str(WORKSPACE)])
 
     step("contrats", [py, "scripts/checks/drift", "--contracts"])
 

@@ -15,7 +15,7 @@ kind: realisation
 overlay, puis arrive sur l'arène en sachant s'il est le joueur 1 ou le joueur 2. Si le
 serveur ne répond pas, il le voit et peut réessayer. Les messages suivent
 `contracts/canal-joueur.md` (home repo) ; les écrans suivent la maquette I26-M1
-(`initiatives/5-realisation/I26-rejoindre-un-match/maquettes/`).
+(`initiatives/7-livree/I26-rejoindre-un-match/maquettes/`).
 
 ## Ce que le client livre
 

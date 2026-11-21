@@ -1,0 +1,131 @@
+#!/usr/bin/env python3
+"""Scénario de bout en bout I26-E1-S6 : deux joueurs se retrouvent dans un match.
+
+    uv run ci/scenarios/deux-joueurs-se-retrouvent [<workspace>]
+
+Contre le workspace monté (par défaut `workspace/`) :
+  1. construit le serveur (`workspace/backend`) et le démarre sur un port libre
+     (`GAMBETA_ADDR`), puis attend que `/health` réponde ;
+  2. lance deux clients Godot sans fenêtre (`workspace/client`) en mode automatique
+     (`--rejoindre --rapport=…`), à 1 s d'écart ;
+  3. vérifie que leurs rapports disent `{"joueur": 1}` et `{"joueur": 2}`.
+
+Rend 0 si les deux joueurs se sont retrouvés, 1 sinon (avec les sorties en cause).
+Godot : variable GODOT, sinon `godot` / `godot4` dans le PATH, sinon l'application macOS.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import shutil
+import socket
+import subprocess
+import sys
+import tempfile
+import time
+import urllib.request
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[2]
+DELAI_SANTE = 30.0  # secondes pour que /health réponde
+DELAI_CLIENTS = 60.0  # secondes pour que les deux clients rendent leur rapport
+ECART_CLIENTS = 1.0  # secondes entre le premier et le second client
+GODOT_MACOS = "/Applications/Godot.app/Contents/MacOS/Godot"
+
+
+def godot() -> str:
+    for candidat in (os.environ.get("GODOT"), shutil.which("godot"), shutil.which("godot4")):
+        if candidat:
+            return candidat
+    if Path(GODOT_MACOS).exists():
+        return GODOT_MACOS
+    raise RuntimeError("Godot 4.7 introuvable : installez-le ou passez GODOT=/chemin/vers/godot")
+
+
+def port_libre() -> int:
+    with socket.socket() as s:
+        s.bind(("127.0.0.1", 0))
+        return s.getsockname()[1]
+
+
+def attendre_sante(url: str, serveur: subprocess.Popen[bytes]) -> None:
+    fin = time.monotonic() + DELAI_SANTE
+    while time.monotonic() < fin:
+        if serveur.poll() is not None:
+            raise RuntimeError(f"le serveur s'est arrêté (code {serveur.returncode})")
+        try:
+            with urllib.request.urlopen(url, timeout=1) as r:
+                if r.status == 200:
+                    return
+        except OSError:
+            pass
+        time.sleep(0.2)
+    raise RuntimeError(f"{url} ne répond pas après {DELAI_SANTE:.0f} s")
+
+
+def client(binaire: str, dossier: Path, adresse: str, rapport: Path, journal: Path) -> subprocess.Popen[bytes]:
+    cmd = [binaire, "--headless", "--path", str(dossier), "--", f"--server={adresse}", "--rejoindre", f"--rapport={rapport}"]
+    print(f"   $ {' '.join(cmd)}", flush=True)
+    with journal.open("wb") as sortie:
+        return subprocess.Popen(cmd, stdout=sortie, stderr=subprocess.STDOUT)
+
+
+def lire_rapport(rapport: Path) -> dict[str, object]:
+    try:
+        return json.loads(rapport.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+
+
+def run(workspace: Path) -> int:
+    backend, client_dir = workspace / "backend", workspace / "client"
+    binaire_godot = godot()
+    print("   construction du serveur", flush=True)
+    subprocess.run(["cargo", "build", "-q", "-p", "gambeta_server", "--locked"], cwd=backend, check=True)
+    port = port_libre()
+    tmp = Path(tempfile.mkdtemp(prefix="scenario-"))
+    journal_serveur = tmp / "serveur.log"
+    env = {**os.environ, "GAMBETA_ADDR": f"127.0.0.1:{port}"}
+    with journal_serveur.open("wb") as sortie:
+        serveur = subprocess.Popen([str(backend / "target/debug/gambeta_server")], cwd=backend, env=env, stdout=sortie, stderr=subprocess.STDOUT)
+    clients: list[subprocess.Popen[bytes]] = []
+    try:
+        attendre_sante(f"http://127.0.0.1:{port}/health", serveur)
+        print(f"   serveur prêt sur 127.0.0.1:{port}", flush=True)
+        adresse = f"ws://127.0.0.1:{port}/ws"
+        rapports = [tmp / "a.json", tmp / "b.json"]
+        journaux = [tmp / "a.log", tmp / "b.log"]
+        for i in range(2):
+            if i:
+                time.sleep(ECART_CLIENTS)
+            clients.append(client(binaire_godot, client_dir, adresse, rapports[i], journaux[i]))
+        fin = time.monotonic() + DELAI_CLIENTS
+        for c in clients:
+            c.wait(timeout=max(0.0, fin - time.monotonic()))
+        lus = [lire_rapport(r) for r in rapports]
+        codes = [c.returncode for c in clients]
+        print(f"   rapports : A {lus[0]} (code {codes[0]}), B {lus[1]} (code {codes[1]})", flush=True)
+        if codes == [0, 0] and sorted(r.get("joueur", 0) for r in lus) == [1, 2]:  # type: ignore[type-var]
+            print("   ✓ les deux joueurs se sont retrouvés : joueurs 1 et 2", flush=True)
+            return 0
+        for nom, journal in (("serveur", journal_serveur), ("client A", journaux[0]), ("client B", journaux[1])):
+            print(f"\n── {nom} ({journal})\n{journal.read_text(encoding='utf-8', errors='replace')[-3000:]}")
+        print("   ✗ les deux joueurs ne se sont pas retrouvés", file=sys.stderr)
+        return 1
+    except subprocess.TimeoutExpired:
+        print(f"   ✗ les clients n'ont pas rendu leur rapport en {DELAI_CLIENTS:.0f} s", file=sys.stderr)
+        return 1
+    finally:
+        for p in [*clients, serveur]:
+            if p.poll() is None:
+                p.kill()
+                p.wait()
+
+
+if __name__ == "__main__":
+    try:
+        sys.exit(run(Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else ROOT / "workspace"))
+    except (RuntimeError, subprocess.CalledProcessError) as e:
+        print(f"   ✗ {e}", file=sys.stderr)
+        sys.exit(1)

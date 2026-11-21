@@ -9,12 +9,12 @@
 
 manifest: current
 integrated_at: '2026-11-21'
-contracts: 5df1fbafb399c237a91b4c8b128d0d1e7d2c4eb2
-from_decision: '0003'
+contracts: 8be68e477700dd4f4ff676316a7d75e163ed4ab5
+from_initiative: I26-rejoindre-un-match
 components:
   backend:
-    sha: 960b7abafb70820bdf9c8c7baf5a76fe6f61b28d
+    sha: 56844e30f718182b20394c30540b0fdb115b4e52
   client:
-    sha: 84bb03077d43ec6d8dba552e2cd01b4997c1efcc
+    sha: da6f81d4b017d3bebaf2b45716051cb0025af7b5
   open-duelyst:
     sha: 2ce9684181a108f93afcdfdd60bf220c42465039

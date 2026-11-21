@@ -9,7 +9,8 @@
 #   branch        branche d'intégration du composant
 #   kind          service | client | test-double | data | external
 #   gates         commandes du composant, lancées par ci/integrate dans son clone
-#                 monté (workspace/<composant>/) : install, puis test
+#                 monté (workspace/<composant>/) : install, puis test ; viennent
+#                 ensuite les scénarios de bout en bout (ci/scenarios/)
 #   extractor     script de scripts/extractors/ qui régénère les contrats
 #                 fournis, depuis le code du composant (aucun encore)
 #   owns_specs    où le composant reçoit ses epics composant
@@ -75,7 +76,9 @@ components:
       - générer ses assets graphiques depuis OpenDuelyst (scripts/duelyst_import/)
       - de manière générale c'est le composant d'affichage de ce qui se présente au joueur
     owns_specs: specs/
-    gates: {}
+    gates:
+      install: make install   # import Godot : cache .godot/ (classes, ressources)
+      test: make check        # lint, typecheck, arch (frontières de l'hexagone), tests GUT
 
   open-duelyst:
     repo: git@github.com:open-duelyst/duelyst.git
