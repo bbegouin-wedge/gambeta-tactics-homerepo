@@ -53,5 +53,5 @@ vaut départ ». Cet epic les fait exister des deux côtés.
 
 ## Relectures
 
-- **backend** : à faire, dans `gambeta_server` (lire `I26-E2-BE`).
+- **backend** : faite et réalisée le 2026-11-21, branche `I26-E2-BE` de `gambeta_server` (commit `56844e3`).
 - **client** : à faire, dans `gambeta_tactics_client` (lire `I26-E2-CL`).

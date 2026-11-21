@@ -124,5 +124,5 @@ Markdown ; `CLAUDE.md` (règle « Contrats ») ne renvoie plus à l'ancienne I1.
 
 ## Relectures
 
-- **backend** : à faire, dans `gambeta_server` (lire `I26-E1-BE`).
+- **backend** : faite et réalisée le 2026-11-21, branche `I26-E2-BE` de `gambeta_server` (commit `3f6a6ba`). Écart : la porte `test-quality` de l’usine n’a pas tourné (usine en pause) ; la forme `given_` / `when_` / `then_` est suivie à la main.
 - **client** : à faire, dans `gambeta_tactics_client` (lire `I26-E1-CL`).
