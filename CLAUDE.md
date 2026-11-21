@@ -68,9 +68,9 @@ Toute évolution du produit naît ici, même si elle ne touche qu'un composant
 - **Toute dépendance est déclarée** : une relation entre composants absente
   de `system/relations.yaml` n'existe pas. Un contrat dans `contracts/` est
   porté par au moins une relation.
-- **Contrats** : aucun n'existe encore. Le protocole du canal d'un joueur, et
-  la règle qui dit quels contrats sont générés depuis le code et lesquels sont
-  écrits à la main, sont fixés par l'initiative I1 et son ADR.
+- **Contrats** : le canal d'un joueur est décrit par `contracts/canal-joueur.md`,
+  écrit à la main (I26). Un contrat reste écrit à la main tant qu'aucun
+  extracteur ne le génère depuis le code (`contracts/README.md`).
 - **`product/` est la référence du game design.**
 - **Les composants se lisent au SHA du manifeste**, dans `workspace/`
   (`make workspace`), jamais dans leur clone de travail quand on raisonne sur

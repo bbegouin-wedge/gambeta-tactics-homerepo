@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>I26-M1 Overlay de messages</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Michroma&family=Lato:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --gold: #ffd15a;
+    --ink: #06040f;
+    --text: #f3eee2;
+    --muted: #b9b2c9;
+    --danger: #ff6b5e;
+    --page: #14111d;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 24px 16px 40px;
+    background: var(--page); color: var(--text);
+    font-family: Lato, system-ui, sans-serif;
+  }
+  header { max-width: 1200px; margin: 0 auto 16px; }
+  h1 { font-family: Michroma, sans-serif; font-size: 18px; letter-spacing: .08em; margin: 0 0 6px; color: var(--gold); }
+  header p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.5; }
+
+  nav { max-width: 1200px; margin: 0 auto 14px; display: flex; flex-wrap: wrap; gap: 8px; }
+  nav button {
+    font: 700 13px Lato, sans-serif; color: var(--text); background: #221d2e;
+    border: 1px solid #3a3350; border-radius: 6px; padding: 8px 12px; cursor: pointer;
+  }
+  nav button[aria-pressed="true"] { border-color: var(--gold); color: var(--gold); }
+
+  /* L'écran du jeu, au format 16:9 du client (1920 × 1080). */
+  .screen {
+    position: relative; max-width: 1200px; margin: 0 auto; aspect-ratio: 16 / 9;
+    background: center / cover no-repeat; border-radius: 8px; overflow: hidden;
+    container-type: inline-size;
+  }
+  .screen[data-bg="accueil"] { background-image: url("fond-accueil.jpg"); }
+  .screen[data-bg="arene"]   { background-image: url("fond-arene.jpg"); }
+
+  /* L'overlay : tout l'écran, encre du jeu à 80 % d'opacité, message plein centre. */
+  .overlay {
+    position: absolute; inset: 0; background: rgb(6 4 15 / .8);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 2.2cqw; text-align: center; padding: 0 8cqw;
+    transition: opacity .5s ease;
+  }
+  .overlay.hidden { opacity: 0; pointer-events: none; }
+  .title {
+    font-family: Michroma, sans-serif; color: var(--gold);
+    font-size: 3.1cqw; letter-spacing: .12em; text-transform: uppercase; margin: 0;
+    text-shadow: 0 0 1.4cqw rgb(255 209 90 / .35);
+  }
+  .title.danger { color: var(--danger); text-shadow: 0 0 1.4cqw rgb(255 107 94 / .35); }
+  .sub { font-size: 1.5cqw; color: var(--text); margin: 0; max-width: 46cqw; line-height: 1.45; }
+  .rule { width: 9cqw; height: 2px; background: var(--gold); opacity: .7; }
+  .rule.danger { background: var(--danger); }
+
+  .btn {
+    font-family: Michroma, sans-serif; font-size: 1.25cqw; letter-spacing: .1em;
+    color: var(--gold); background: rgb(255 209 90 / .08);
+    border: 2px solid var(--gold); border-radius: .5cqw;
+    padding: 1cqw 3cqw; cursor: pointer; text-transform: uppercase;
+  }
+  .btn:hover { background: rgb(255 209 90 / .18); }
+
+  .dots span { animation: blink 1.4s infinite both; }
+  .dots span:nth-child(2) { animation-delay: .2s; }
+  .dots span:nth-child(3) { animation-delay: .4s; }
+  @keyframes blink { 0%, 80%, 100% { opacity: .15; } 40% { opacity: 1; } }
+
+  .spinner {
+    width: 4.5cqw; height: 4.5cqw; border-radius: 50%;
+    border: .35cqw solid rgb(255 209 90 / .2); border-top-color: var(--gold);
+    animation: spin 1s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Repère permanent du numéro, une fois l'overlay d'appariement effacé. */
+  .badge {
+    position: absolute; left: 1.4cqw; bottom: 7.4cqw;
+    font: 700 1.15cqw Lato, sans-serif; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--ink); background: var(--gold); border-radius: .4cqw; padding: .45cqw .9cqw;
+    opacity: 0; transition: opacity .5s ease .3s;
+  }
+  .badge.shown { opacity: 1; }
+
+  .note { max-width: 1200px; margin: 14px auto 0; color: var(--muted); font-size: 14px; line-height: 1.55; }
+  .note strong { color: var(--text); }
+</style>
+</head>
+<body>
+<header>
+  <h1>I26-M1 — Overlay de messages</h1>
+  <p>Un seul composant pour tous les messages de « rejoindre un match » : un voile sur tout l'écran, l'encre du jeu à 80&nbsp;% d'opacité, le message plein centre. Fonds : vraies captures du client (accueil, maquette de l'arène).</p>
+</header>
+
+<nav aria-label="États">
+  <button data-state="attente" aria-pressed="true">1 · En attente</button>
+  <button data-state="injoignable" aria-pressed="false">2 · Serveur injoignable</button>
+  <button data-state="apparie" aria-pressed="false">3 · Adversaire trouvé</button>
+  <button data-state="deconnecte" aria-pressed="false">4 · Adversaire déconnecté</button>
+</nav>
+
+<div class="screen" id="screen" data-bg="accueil"></div>
+<p class="note" id="note"></p>
+
+<template id="t-attente">
+  <div class="overlay">
+    <div class="spinner" aria-hidden="true"></div>
+    <p class="title">En attente d'un adversaire<span class="dots"><span>.</span><span>.</span><span>.</span></span></p>
+    <button class="btn">Annuler</button>
+  </div>
+</template>
+
+<template id="t-injoignable">
+  <div class="overlay">
+    <p class="title danger">Serveur injoignable</p>
+    <div class="rule danger"></div>
+    <p class="sub">Impossible de joindre le serveur de jeu. Réessayez dans un instant.</p>
+    <button class="btn">OK</button>
+  </div>
+</template>
+
+<template id="t-apparie">
+  <div class="overlay">
+    <p class="title">Adversaire trouvé</p>
+    <div class="rule"></div>
+    <p class="sub">Vous êtes le <strong>Joueur&nbsp;1</strong></p>
+  </div>
+  <div class="badge">Joueur 1</div>
+</template>
+
+<template id="t-deconnecte">
+  <div class="overlay">
+    <p class="title danger">Adversaire déconnecté</p>
+    <div class="rule danger"></div>
+    <p class="sub">Le match est terminé. Retour à l'accueil dans <strong class="count">5</strong>&nbsp;s.</p>
+    <button class="btn">Retour à l'accueil</button>
+  </div>
+</template>
+
+<script>
+  const STATES = {
+    attente: {
+      bg: "accueil",
+      note: "<strong>Après le clic sur « Rejoindre un match ».</strong> Le voile reste tant que le serveur n'a pas trouvé d'adversaire. « Annuler » coupe la connexion (la place se libère, Q4), puis le voile disparaît et l'accueil redevient utilisable."
+    },
+    injoignable: {
+      bg: "accueil",
+      note: "<strong>La connexion au serveur échoue.</strong> « OK » ferme le voile ; le joueur reste sur l'accueil et peut recliquer « Rejoindre un match » pour réessayer (Q5)."
+    },
+    apparie: {
+      bg: "arene",
+      note: "<strong>Le serveur a formé la paire.</strong> L'arène s'ouvre sous le voile, qui s'efface seul au bout de 2&nbsp;s (fondu de 0,5&nbsp;s). Il reste un repère « Joueur 1 » ou « Joueur 2 » en bas à gauche. L'arène elle-même ne change pas (Q5)."
+    },
+    deconnecte: {
+      bg: "arene",
+      note: "<strong>L'autre joueur a coupé sa connexion.</strong> Le match est fini (Q4). Retour automatique à l'accueil après 5&nbsp;s, ou tout de suite avec le bouton."
+    }
+  };
+
+  const screen = document.getElementById("screen");
+  const note = document.getElementById("note");
+  let timers = [];
+
+  function show(state) {
+    timers.forEach(clearTimeout); timers.forEach(clearInterval); timers = [];
+    const s = STATES[state];
+    screen.dataset.bg = s.bg;
+    screen.replaceChildren(document.getElementById("t-" + state).content.cloneNode(true));
+    note.innerHTML = s.note;
+    document.querySelectorAll("nav button").forEach(b =>
+      b.setAttribute("aria-pressed", String(b.dataset.state === state)));
+
+    const overlay = screen.querySelector(".overlay");
+    const btn = screen.querySelector(".btn");
+    if (state === "attente" || state === "injoignable") {
+      btn.addEventListener("click", () => overlay.classList.add("hidden"));
+    }
+    if (state === "apparie") {
+      timers.push(setTimeout(() => {
+        overlay.classList.add("hidden");
+        screen.querySelector(".badge").classList.add("shown");
+      }, 2000));
+    }
+    if (state === "deconnecte") {
+      const count = screen.querySelector(".count");
+      const back = () => { timers.forEach(clearInterval); screen.dataset.bg = "accueil"; overlay.classList.add("hidden"); };
+      let n = 5;
+      timers.push(setInterval(() => { n -= 1; count.textContent = n; if (n <= 0) back(); }, 1000));
+      btn.addEventListener("click", back);
+    }
+  }
+
+  document.querySelectorAll("nav button").forEach(b =>
+    b.addEventListener("click", () => show(b.dataset.state)));
+  show("attente");
+</script>
+</body>
+</html>

@@ -16,12 +16,13 @@ relations:
     from: client
     to: backend
     role: consumes
-    contract: null
-    status: planned
+    contract: canal-joueur.md
+    status: formal
     notes: >
-      Le canal d'un joueur : événements filtrés par joueur, saisies attendues,
-      décisions remontées. Le protocole et la nature de son contrat (généré
-      depuis le code ou écrit) sont fixés par l'initiative I1.
+      Le canal d'un joueur : WebSocket sur /ws, JSON en trames texte, contrat
+      écrit à la main (I26). Couvre pour l'instant rejoindre un match ; les
+      événements filtrés par joueur, les saisies attendues et les décisions
+      remontées s'y ajouteront.
 
   - id: client-shows-card-texts
     from: client

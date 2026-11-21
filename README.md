@@ -8,7 +8,7 @@ system/components.yaml       composants, dépôts, codes courts, responsabilité
 system/relations.yaml        dépendances déclarées, via quels contrats
 manifests/current.yaml       la baseline : les SHA qui marchent ensemble
 manifests/candidates/        les SHA proposés par une initiative
-contracts/                   contrats entre composants (aucun encore, voir I1)
+contracts/                   contrats entre composants (canal du joueur, I26)
 product/                     game design : la référence des grillings
 initiatives/<colonne>/<id>/  le kanban des initiatives du projet
 decisions/                   ADR transverses
